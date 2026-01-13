@@ -1,0 +1,539 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Examen - Biométrie Examen</title>
+    <link rel="stylesheet" href="css/style.css">
+    <style>
+        .voice-challenge-modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.9);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 3000;
+        }
+        
+        .voice-challenge-content {
+            background: var(--bg-card);
+            padding: 2rem;
+            border-radius: var(--border-radius);
+            max-width: 500px;
+            text-align: center;
+        }
+    </style>
+</head>
+<body>
+    <!-- En-tête de l'examen -->
+    <div class="exam-header">
+        <div class="container">
+            <div class="exam-info">
+                <div>
+                    <h2 id="examTitle">Chargement...</h2>
+                    <span id="questionProgress" style="color: var(--text-secondary);">Question 0/0</span>
+                </div>
+                <div class="exam-timer" id="examTimer">00:00:00</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Contenu de l'examen -->
+    <main class="container">
+        <div class="exam-content">
+            <!-- Zone des questions -->
+            <div id="questionContainer">
+                <div class="question-card">
+                    <p class="text-center" style="color: var(--text-secondary);">Chargement de l'examen...</p>
+                </div>
+            </div>
+
+            <!-- Panneau de surveillance -->
+            <div class="surveillance-panel">
+                <h3 class="mb-2">📷 Surveillance</h3>
+                <video id="surveillanceVideo" class="surveillance-video" autoplay muted playsinline></video>
+                
+                <div class="surveillance-stats">
+                    <div class="surveillance-stat">
+                        <span>Visage</span>
+                        <span id="faceStatusIndicator" class="badge badge-warning">En attente</span>
+                    </div>
+                    <div class="surveillance-stat">
+                        <span>Voix</span>
+                        <span id="voiceStatusIndicator" class="badge badge-warning">En attente</span>
+                    </div>
+                    <div class="surveillance-stat">
+                        <span>Anomalies</span>
+                        <span id="anomaliesCount" class="badge badge-info">0</span>
+                    </div>
+                </div>
+
+                <div class="mt-3">
+                    <div class="progress">
+                        <div id="surveillanceProgress" class="progress-bar success" style="width: 100%;"></div>
+                    </div>
+                    <small style="color: var(--text-secondary);">Prochaine vérification...</small>
+                </div>
+            </div>
+        </div>
+
+        <!-- Navigation entre questions -->
+        <div class="card mt-3">
+            <div style="display: flex; justify-content: space-between; align-items: center;">
+                <button id="prevBtn" class="btn btn-secondary" onclick="previousQuestion()">
+                    ← Précédent
+                </button>
+                
+                <div id="questionDots" style="display: flex; gap: 0.5rem;">
+                    <!-- Points de navigation -->
+                </div>
+
+                <button id="nextBtn" class="btn btn-primary" onclick="nextQuestion()">
+                    Suivant →
+                </button>
+
+                <button id="submitBtn" class="btn btn-success hidden" onclick="submitExam()">
+                    ✅ Terminer l'examen
+                </button>
+            </div>
+        </div>
+    </main>
+
+    <!-- Modal de défi vocal -->
+    <div id="voiceChallengeModal" class="voice-challenge-modal hidden">
+        <div class="voice-challenge-content">
+            <h2 class="mb-3">🎤 Vérification vocale</h2>
+            <p class="mb-3" style="color: var(--text-secondary);">
+                Veuillez lire le texte suivant à voix haute:
+            </p>
+            <div class="card mb-3" style="background: var(--bg-secondary);">
+                <p style="font-size: 1.1rem;" id="challengeText">-</p>
+            </div>
+            <button id="startChallengeBtn" class="btn btn-danger btn-lg" onclick="startVoiceChallenge()">
+                🎤 Commencer l'enregistrement
+            </button>
+            <div id="challengeRecording" class="hidden mt-3">
+                <div class="spinner" style="margin: 0 auto;"></div>
+                <p class="mt-2">Enregistrement en cours...</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal de disqualification (triche) -->
+    <div id="cheatingModal" class="voice-challenge-modal hidden">
+        <div class="voice-challenge-content" style="border: 3px solid var(--danger); background: #1a0000;">
+            <h2 style="color: var(--danger);">🚫 TRICHE DÉTECTÉE</h2>
+            <div class="mt-3 mb-3">
+                <p style="font-size: 1.2rem; color: white;">Vous êtes en train de tricher !</p>
+                <p style="color: var(--text-secondary);" id="cheatingReason">-</p>
+            </div>
+            <div class="card mb-3" style="background: var(--danger); color: white;">
+                <h3>Note attribuée: 0/20</h3>
+                <p>L'examen a été terminé automatiquement.</p>
+            </div>
+            <button class="btn btn-secondary btn-lg" onclick="returnToDashboard()">
+                Retour au tableau de bord
+            </button>
+        </div>
+    </div>
+
+    <!-- Modal d'avertissement -->
+    <div id="warningModal" class="voice-challenge-modal hidden">
+        <div class="voice-challenge-content" style="border: 2px solid var(--warning);">
+            <h2 style="color: var(--warning);">⚠️ ATTENTION</h2>
+            <p class="mt-3 mb-3" id="warningMessage">-</p>
+            <p id="warningAttempts" style="color: var(--danger); font-weight: bold;">-</p>
+            <button class="btn btn-primary btn-lg mt-3" onclick="closeWarningModal()">
+                Compris, je continue
+            </button>
+        </div>
+    </div>
+
+    <!-- Loading overlay -->
+    <div id="loadingOverlay" class="loading-overlay hidden">
+        <div class="spinner"></div>
+        <p id="loadingText">Chargement...</p>
+    </div>
+
+    <script src="js/api.js"></script>
+    <script src="js/biometric.js"></script>
+    <script>
+        // Variables globales
+        let exam = null;
+        let session = null;
+        let questions = [];
+        let currentQuestionIndex = 0;
+        let answers = {};
+        let surveillance = null;
+        let timerInterval = null;
+        let timeRemaining = 0;
+        let currentChallenge = null;
+
+        // Obtenir l'ID de l'examen depuis l'URL
+        const urlParams = new URLSearchParams(window.location.search);
+        const examId = urlParams.get('id');
+
+        // Charger l'examen
+        async function loadExam() {
+            if (!examId) {
+                alert('ID d\'examen manquant');
+                window.location.href = 'exams.html';
+                return;
+            }
+
+            try {
+                showLoading('Chargement de l\'examen...');
+                exam = await api.getExam(examId);
+                questions = exam.questions || [];
+                
+                document.getElementById('examTitle').textContent = exam.title;
+                
+                // Démarrer la session
+                session = await api.startExam(examId);
+                
+                // Initialiser le timer
+                timeRemaining = exam.duration_minutes * 60;
+                startTimer();
+
+                // Démarrer la surveillance
+                await startSurveillance();
+
+                // Afficher la première question
+                displayQuestion();
+                updateNavigation();
+
+                hideLoading();
+            } catch (error) {
+                hideLoading();
+                alert('Erreur: ' + error.message);
+                window.location.href = 'dashboard.html';
+            }
+        }
+
+        // Démarrer le timer
+        function startTimer() {
+            timerInterval = setInterval(() => {
+                timeRemaining--;
+                updateTimerDisplay();
+
+                if (timeRemaining <= 0) {
+                    clearInterval(timerInterval);
+                    alert('Temps écoulé !');
+                    submitExam();
+                }
+            }, 1000);
+        }
+
+        // Mettre à jour l'affichage du timer
+        function updateTimerDisplay() {
+            const hours = Math.floor(timeRemaining / 3600);
+            const minutes = Math.floor((timeRemaining % 3600) / 60);
+            const seconds = timeRemaining % 60;
+
+            const timer = document.getElementById('examTimer');
+            timer.textContent = `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
+
+            // Couleur selon le temps restant
+            if (timeRemaining <= 60) {
+                timer.className = 'exam-timer danger';
+            } else if (timeRemaining <= 300) {
+                timer.className = 'exam-timer warning';
+            }
+        }
+
+        // Démarrer la surveillance
+        async function startSurveillance() {
+            const video = document.getElementById('surveillanceVideo');
+            surveillance = new SurveillanceManager(session.id, video);
+
+            // Callbacks
+            surveillance.onFaceCheckResult = (result) => {
+                const indicator = document.getElementById('faceStatusIndicator');
+                const anomaliesEl = document.getElementById('anomaliesCount');
+                
+                if (result.success) {
+                    indicator.textContent = '✅ OK';
+                    indicator.className = 'badge badge-success';
+                } else {
+                    indicator.textContent = '❌ Échec';
+                    indicator.className = 'badge badge-danger';
+                    anomaliesEl.textContent = parseInt(anomaliesEl.textContent) + 1;
+                    
+                    // Vérifier si disqualifié
+                    if (result.disqualified) {
+                        showCheatingModal(result.reason);
+                    } else if (result.remaining_attempts !== undefined) {
+                        showWarningModal(
+                            result.message,
+                            `Restez face à la caméra !`
+                        );
+                    }
+                }
+            };
+
+            surveillance.onVoiceChallengeRequired = (challenge) => {
+                currentChallenge = challenge;
+                document.getElementById('challengeText').textContent = challenge.text_to_read;
+                document.getElementById('voiceChallengeModal').classList.remove('hidden');
+            };
+
+            surveillance.onAbsenceDetected = () => {
+                const indicator = document.getElementById('faceStatusIndicator');
+                indicator.textContent = '⚠️ Absent';
+                indicator.className = 'badge badge-warning';
+            };
+
+            surveillance.onError = (error) => {
+                console.error('Surveillance error:', error);
+            };
+
+            // Démarrer avec intervalle de 5 secondes pour détection rapide
+            const faceInterval = Math.min((exam.face_check_interval || 10) * 1000, 5000);
+            const voiceInterval = (exam.voice_check_interval || 120) * 1000;
+            await surveillance.start(faceInterval, voiceInterval);
+        }
+
+        // Afficher le modal de triche
+        function showCheatingModal(reason) {
+            // Arrêter tout
+            if (surveillance) surveillance.stop();
+            if (timerInterval) clearInterval(timerInterval);
+            
+            document.getElementById('cheatingReason').textContent = reason || "Échec des vérifications biométriques";
+            document.getElementById('cheatingModal').classList.remove('hidden');
+        }
+
+        // Afficher le modal d'avertissement
+        function showWarningModal(message, attempts) {
+            document.getElementById('warningMessage').textContent = message;
+            document.getElementById('warningAttempts').textContent = attempts;
+            document.getElementById('warningModal').classList.remove('hidden');
+        }
+
+        // Fermer le modal d'avertissement
+        function closeWarningModal() {
+            document.getElementById('warningModal').classList.add('hidden');
+        }
+
+        // Retour au dashboard après disqualification
+        function returnToDashboard() {
+            window.location.href = 'dashboard.html';
+        }
+
+        // Défi vocal
+        async function startVoiceChallenge() {
+            if (!currentChallenge) return;
+
+            document.getElementById('startChallengeBtn').classList.add('hidden');
+            document.getElementById('challengeRecording').classList.remove('hidden');
+
+            try {
+                const result = await surveillance.submitVoiceResponse(currentChallenge.challenge_id);
+                
+                const indicator = document.getElementById('voiceStatusIndicator');
+                if (result.success) {
+                    indicator.textContent = '✅ OK';
+                    indicator.className = 'badge badge-success';
+                    document.getElementById('voiceChallengeModal').classList.add('hidden');
+                } else {
+                    indicator.textContent = '❌ Échec';
+                    indicator.className = 'badge badge-danger';
+                    document.getElementById('voiceChallengeModal').classList.add('hidden');
+                    
+                    // Vérifier si disqualifié
+                    if (result.disqualified) {
+                        showCheatingModal(result.reason);
+                    } else if (result.remaining_attempts !== undefined) {
+                        showWarningModal(
+                            "Votre voix n'a pas été reconnue !",
+                            `Tentatives restantes avant disqualification: ${result.remaining_attempts}`
+                        );
+                    }
+                }
+            } catch (error) {
+                document.getElementById('voiceChallengeModal').classList.add('hidden');
+                alert('Erreur: ' + error.message);
+            } finally {
+                document.getElementById('startChallengeBtn').classList.remove('hidden');
+                document.getElementById('challengeRecording').classList.add('hidden');
+                currentChallenge = null;
+            }
+        }
+
+        // Afficher une question
+        function displayQuestion() {
+            if (questions.length === 0) {
+                document.getElementById('questionContainer').innerHTML = `
+                    <div class="question-card">
+                        <p class="text-center" style="color: var(--text-secondary);">
+                            Aucune question dans cet examen.
+                        </p>
+                    </div>
+                `;
+                return;
+            }
+
+            const question = questions[currentQuestionIndex];
+            const selectedAnswer = answers[question.id];
+
+            document.getElementById('questionProgress').textContent = 
+                `Question ${currentQuestionIndex + 1}/${questions.length}`;
+
+            document.getElementById('questionContainer').innerHTML = `
+                <div class="question-card">
+                    <p class="question-number">Question ${currentQuestionIndex + 1}</p>
+                    <p class="question-text">${question.text}</p>
+                    <div class="options-list">
+                        ${question.options.map((option, index) => `
+                            <label class="option-item ${selectedAnswer === index ? 'selected' : ''}">
+                                <input type="radio" 
+                                    name="answer" 
+                                    value="${index}"
+                                    ${selectedAnswer === index ? 'checked' : ''}
+                                    onchange="selectAnswer(${question.id}, ${index})">
+                                <span>${option}</span>
+                            </label>
+                        `).join('')}
+                    </div>
+                </div>
+            `;
+        }
+
+        // Sélectionner une réponse
+        function selectAnswer(questionId, answerIndex) {
+            answers[questionId] = answerIndex;
+            displayQuestion(); // Rafraîchir pour montrer la sélection
+            updateNavigation();
+        }
+
+        // Navigation
+        function previousQuestion() {
+            if (currentQuestionIndex > 0) {
+                currentQuestionIndex--;
+                displayQuestion();
+                updateNavigation();
+            }
+        }
+
+        function nextQuestion() {
+            if (currentQuestionIndex < questions.length - 1) {
+                currentQuestionIndex++;
+                displayQuestion();
+                updateNavigation();
+            }
+        }
+
+        function goToQuestion(index) {
+            currentQuestionIndex = index;
+            displayQuestion();
+            updateNavigation();
+        }
+
+        function updateNavigation() {
+            // Boutons précédent/suivant
+            document.getElementById('prevBtn').disabled = currentQuestionIndex === 0;
+            
+            const isLastQuestion = currentQuestionIndex === questions.length - 1;
+            document.getElementById('nextBtn').classList.toggle('hidden', isLastQuestion);
+            document.getElementById('submitBtn').classList.toggle('hidden', !isLastQuestion);
+
+            // Points de navigation
+            const dotsContainer = document.getElementById('questionDots');
+            dotsContainer.innerHTML = questions.map((q, i) => `
+                <button 
+                    class="btn btn-sm ${answers[q.id] !== undefined ? 'btn-success' : 'btn-secondary'}"
+                    style="width: 32px; height: 32px; padding: 0; ${i === currentQuestionIndex ? 'border: 2px solid white;' : ''}"
+                    onclick="goToQuestion(${i})">
+                    ${i + 1}
+                </button>
+            `).join('');
+        }
+
+        // Soumettre l'examen
+        async function submitExam() {
+            const answeredCount = Object.keys(answers).length;
+            const totalCount = questions.length;
+
+            if (answeredCount < totalCount) {
+                if (!confirm(`Vous n'avez répondu qu'à ${answeredCount}/${totalCount} questions. Voulez-vous vraiment terminer ?`)) {
+                    return;
+                }
+            }
+
+            showLoading('Soumission de l\'examen...');
+
+            try {
+                // Arrêter la surveillance
+                if (surveillance) {
+                    surveillance.stop();
+                }
+
+                // Arrêter le timer
+                if (timerInterval) {
+                    clearInterval(timerInterval);
+                }
+
+                // Formater les réponses
+                const formattedAnswers = Object.entries(answers).map(([questionId, answer]) => ({
+                    question_id: parseInt(questionId),
+                    answer: answer
+                }));
+
+                const result = await api.submitExam(examId, formattedAnswers);
+
+                hideLoading();
+                alert(`🎉 Examen terminé !\n\nVotre score: ${result.score.toFixed(1)}%`);
+                window.location.href = 'dashboard.html';
+            } catch (error) {
+                hideLoading();
+                alert('Erreur: ' + error.message);
+            }
+        }
+
+        // Loading helpers
+        function showLoading(text) {
+            document.getElementById('loadingText').textContent = text;
+            document.getElementById('loadingOverlay').classList.remove('hidden');
+        }
+
+        function hideLoading() {
+            document.getElementById('loadingOverlay').classList.add('hidden');
+        }
+
+        // Empêcher de quitter la page accidentellement
+        window.addEventListener('beforeunload', (e) => {
+            if (session && session.status === 'in_progress') {
+                e.preventDefault();
+                e.returnValue = '';
+            }
+        });
+
+        // Initialisation
+        document.addEventListener('DOMContentLoaded', async () => {
+            if (!localStorage.getItem('access_token')) {
+                window.location.href = 'login.html';
+                return;
+            }
+
+            // Vérifier que l'utilisateur est enrôlé
+            try {
+                const user = await api.getCurrentUser();
+                if (!user.is_enrolled) {
+                    alert('Vous devez d\'abord effectuer l\'enrôlement biométrique');
+                    window.location.href = 'enroll.html';
+                    return;
+                }
+            } catch (error) {
+                window.location.href = 'login.html';
+                return;
+            }
+
+            await loadExam();
+        });
+    </script>
+</body>
+</html>

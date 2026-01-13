@@ -1,0 +1,362 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Connexion - Biométrie Examen</title>
+    <link rel="stylesheet" href="css/style.css">
+    <style>
+        .biometric-step {
+            display: none;
+        }
+        .biometric-step.active {
+            display: block;
+        }
+        .video-preview {
+            width: 100%;
+            max-width: 320px;
+            border-radius: 8px;
+            margin: 1rem auto;
+            display: block;
+            background: var(--bg-secondary);
+        }
+        .step-indicator {
+            display: flex;
+            justify-content: center;
+            gap: 1rem;
+            margin-bottom: 1.5rem;
+        }
+        .step-dot {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            background: var(--border-color);
+        }
+        .step-dot.active {
+            background: var(--primary);
+        }
+        .step-dot.completed {
+            background: var(--success);
+        }
+        .recording-indicator {
+            animation: pulse 1s infinite;
+        }
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+    </style>
+</head>
+<body>
+    <div class="auth-page">
+        <div class="auth-container" style="max-width: 500px;">
+            <!-- Logo -->
+            <div class="auth-logo">
+                <div class="icon">🔐</div>
+                <h1>Biométrie Examen</h1>
+                <p style="color: var(--text-secondary);">Système d'accès biométrique sécurisé</p>
+            </div>
+
+            <!-- Carte d'authentification -->
+            <div class="auth-card">
+                <h2 style="text-align: center; margin-bottom: 1.5rem;">Connexion</h2>
+                
+                <!-- Indicateur d'étapes -->
+                <div class="step-indicator" id="stepIndicator" style="display: none;">
+                    <div class="step-dot" id="step1Dot"></div>
+                    <div class="step-dot" id="step2Dot"></div>
+                    <div class="step-dot" id="step3Dot"></div>
+                </div>
+
+                <div id="loginAlert" class="alert hidden"></div>
+
+                <!-- Étape 1: Email et mot de passe -->
+                <div id="step1" class="biometric-step active">
+                    <form id="credentialsForm">
+                        <div class="form-group">
+                            <label class="form-label" for="loginEmail">Email</label>
+                            <input type="email" id="loginEmail" class="form-control" placeholder="votre@email.com" required>
+                        </div>
+
+                        <div class="form-group">
+                            <label class="form-label" for="loginPassword">Mot de passe</label>
+                            <input type="password" id="loginPassword" class="form-control" placeholder="••••••••" required>
+                        </div>
+
+                        <button type="submit" class="btn btn-primary btn-block btn-lg">
+                            <span>Continuer →</span>
+                        </button>
+                    </form>
+                    
+                    <p style="text-align: center; margin-top: 1rem; color: var(--text-secondary); font-size: 0.9rem;">
+                        Les comptes sont créés par l'administrateur.
+                    </p>
+                </div>
+
+                <!-- Étape 2: Capture du visage -->
+                <div id="step2" class="biometric-step">
+                    <h3 style="text-align: center; margin-bottom: 1rem;">📷 Vérification du visage</h3>
+                    <p style="text-align: center; color: var(--text-secondary); margin-bottom: 1rem;">
+                        Placez votre visage face à la caméra
+                    </p>
+                    
+                    <video id="faceVideo" class="video-preview" autoplay muted playsinline></video>
+                    <canvas id="faceCanvas" style="display: none;"></canvas>
+                    
+                    <div style="text-align: center;">
+                        <button type="button" class="btn btn-primary btn-lg" onclick="captureFace()">
+                            📷 Capturer mon visage
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Étape 3: Enregistrement vocal -->
+                <div id="step3" class="biometric-step">
+                    <h3 style="text-align: center; margin-bottom: 1rem;">🎤 Vérification vocale</h3>
+                    <p style="text-align: center; color: var(--text-secondary); margin-bottom: 1rem;">
+                        Lisez le texte suivant à voix haute:
+                    </p>
+                    
+                    <div class="card" style="background: var(--bg-secondary); text-align: center; padding: 1rem;">
+                        <p style="font-style: italic; font-size: 1.1rem;">
+                            "Bonjour, je confirme mon identité pour passer cet examen."
+                        </p>
+                    </div>
+                    
+                    <div id="voiceRecordingStatus" style="text-align: center; padding: 1.5rem; font-size: 1.2rem;">
+                        🎤 Prêt à enregistrer
+                    </div>
+                    
+                    <div style="text-align: center;">
+                        <button type="button" id="recordVoiceBtn" class="btn btn-danger btn-lg" onclick="startVoiceRecording()">
+                            🎤 Enregistrer ma voix (5s)
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Étape de vérification -->
+                <div id="stepVerifying" class="biometric-step">
+                    <div style="text-align: center; padding: 2rem;">
+                        <div class="spinner" style="margin: 0 auto 1rem;"></div>
+                        <h3>Vérification en cours...</h3>
+                        <p style="color: var(--text-secondary);">
+                            Comparaison de votre visage et votre voix avec vos données enregistrées
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="js/api.js"></script>
+    <script>
+        // Variables globales
+        let userEmail = '';
+        let userPassword = '';
+        let faceImageBase64 = '';
+        let voiceAudioBase64 = '';
+        let videoStream = null;
+        let mediaRecorder = null;
+        let audioChunks = [];
+        let isAdmin = false;
+
+        // Fonction pour afficher une alerte
+        function showAlert(message, type = 'danger') {
+            const alert = document.getElementById('loginAlert');
+            alert.textContent = message;
+            alert.className = `alert alert-${type}`;
+            alert.classList.remove('hidden');
+        }
+
+        function hideAlert() {
+            document.getElementById('loginAlert').classList.add('hidden');
+        }
+
+        // Gestion des étapes
+        function showStep(stepNum) {
+            document.querySelectorAll('.biometric-step').forEach(s => s.classList.remove('active'));
+            document.getElementById('step' + stepNum)?.classList.add('active');
+            document.getElementById('stepVerifying')?.classList.remove('active');
+            
+            // Mettre à jour les indicateurs
+            for (let i = 1; i <= 3; i++) {
+                const dot = document.getElementById('step' + i + 'Dot');
+                if (dot) {
+                    dot.classList.remove('active', 'completed');
+                    if (i < stepNum) dot.classList.add('completed');
+                    if (i === stepNum) dot.classList.add('active');
+                }
+            }
+        }
+
+        function showVerifying() {
+            document.querySelectorAll('.biometric-step').forEach(s => s.classList.remove('active'));
+            document.getElementById('stepVerifying').classList.add('active');
+        }
+
+        // Étape 1: Vérification des identifiants
+        document.getElementById('credentialsForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            hideAlert();
+            
+            userEmail = document.getElementById('loginEmail').value;
+            userPassword = document.getElementById('loginPassword').value;
+
+            try {
+                // Vérifier d'abord les identifiants et récupérer le rôle
+                const response = await api.login(userEmail, userPassword);
+                
+                // Récupérer le profil utilisateur pour vérifier le rôle
+                const user = await api.getCurrentUser();
+                
+                if (user.role === 'admin') {
+                    // Les admins n'ont pas besoin de vérification biométrique
+                    isAdmin = true;
+                    window.location.href = 'admin.html';
+                } else {
+                    // Les candidats doivent faire la vérification biométrique
+                    // On déconnecte temporairement pour faire la vérification complète
+                    api.clearToken();
+                    
+                    if (!user.is_enrolled) {
+                        showAlert('Vos données biométriques ne sont pas encore enregistrées. Contactez l\'administrateur.', 'warning');
+                        return;
+                    }
+                    
+                    // Afficher les étapes biométriques
+                    document.getElementById('stepIndicator').style.display = 'flex';
+                    showStep(2);
+                    await startCamera();
+                }
+            } catch (error) {
+                showAlert(error.message);
+            }
+        });
+
+        // Étape 2: Capture du visage
+        async function startCamera() {
+            try {
+                videoStream = await navigator.mediaDevices.getUserMedia({ 
+                    video: { width: 640, height: 480, facingMode: 'user' } 
+                });
+                document.getElementById('faceVideo').srcObject = videoStream;
+            } catch (error) {
+                showAlert('Impossible d\'accéder à la caméra: ' + error.message);
+            }
+        }
+
+        function captureFace() {
+            const video = document.getElementById('faceVideo');
+            const canvas = document.getElementById('faceCanvas');
+            
+            canvas.width = video.videoWidth;
+            canvas.height = video.videoHeight;
+            canvas.getContext('2d').drawImage(video, 0, 0);
+            
+            faceImageBase64 = canvas.toDataURL('image/jpeg', 0.8);
+            
+            // Arrêter la caméra
+            if (videoStream) {
+                videoStream.getTracks().forEach(track => track.stop());
+                videoStream = null;
+            }
+            
+            // Passer à l'étape 3
+            showStep(3);
+        }
+
+        // Étape 3: Enregistrement vocal
+        async function startVoiceRecording() {
+            try {
+                const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                audioChunks = [];
+                
+                mediaRecorder = new MediaRecorder(stream, { mimeType: 'audio/webm' });
+                
+                mediaRecorder.ondataavailable = (event) => {
+                    audioChunks.push(event.data);
+                };
+                
+                mediaRecorder.onstop = async () => {
+                    stream.getTracks().forEach(track => track.stop());
+                    
+                    const audioBlob = new Blob(audioChunks, { type: 'audio/webm' });
+                    
+                    // Convertir en base64
+                    const reader = new FileReader();
+                    reader.onloadend = async () => {
+                        voiceAudioBase64 = reader.result;
+                        
+                        // Procéder à la vérification
+                        await verifyBiometric();
+                    };
+                    reader.readAsDataURL(audioBlob);
+                };
+                
+                mediaRecorder.start();
+                
+                const statusEl = document.getElementById('voiceRecordingStatus');
+                const btn = document.getElementById('recordVoiceBtn');
+                
+                statusEl.innerHTML = '<span class="recording-indicator">🔴 Enregistrement en cours...</span>';
+                statusEl.style.color = 'var(--danger)';
+                btn.disabled = true;
+                btn.textContent = 'Enregistrement...';
+                
+                // Arrêter après 5 secondes
+                setTimeout(() => {
+                    if (mediaRecorder && mediaRecorder.state === 'recording') {
+                        mediaRecorder.stop();
+                        statusEl.innerHTML = '⏳ Traitement...';
+                    }
+                }, 5000);
+                
+            } catch (error) {
+                showAlert('Impossible d\'accéder au microphone: ' + error.message);
+            }
+        }
+
+        // Vérification biométrique complète
+        async function verifyBiometric() {
+            showVerifying();
+            
+            try {
+                const response = await api.loginBiometric(
+                    userEmail, 
+                    userPassword, 
+                    faceImageBase64, 
+                    voiceAudioBase64
+                );
+                
+                // Connexion réussie !
+                api.setToken(response.access_token);
+                window.location.href = 'dashboard.html';
+                
+            } catch (error) {
+                showStep(1);
+                document.getElementById('stepIndicator').style.display = 'none';
+                showAlert('Vérification biométrique échouée: ' + error.message);
+                
+                // Réinitialiser
+                faceImageBase64 = '';
+                voiceAudioBase64 = '';
+            }
+        }
+
+        // Vérifier si déjà connecté
+        if (localStorage.getItem('access_token')) {
+            api.getCurrentUser()
+                .then(user => {
+                    if (user.role === 'admin') {
+                        window.location.href = 'admin.html';
+                    } else {
+                        window.location.href = 'dashboard.html';
+                    }
+                })
+                .catch(() => {
+                    localStorage.removeItem('access_token');
+                });
+        }
+    </script>
+</body>
+</html>

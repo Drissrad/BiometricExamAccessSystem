@@ -1,0 +1,1878 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Administration - Biométrie Examen</title>
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+    <!-- Navigation -->
+    <nav class="navbar">
+        <div class="container">
+            <a href="admin.html" class="navbar-brand">
+                <span class="icon">🔐</span>
+                <span>Biométrie Examen</span>
+            </a>
+
+            <ul class="navbar-nav">
+                <li><a href="admin.html" class="active">Dashboard</a></li>
+                <li><a href="#" onclick="showSection('users')">Utilisateurs</a></li>
+                <li><a href="#" onclick="showSection('exams')">Examens</a></li>
+                <li><a href="#" onclick="showSection('logs')">Journaux</a></li>
+            </ul>
+
+            <div class="user-menu">
+                <div class="user-info">
+                    <div class="user-name" id="userName">-</div>
+                    <div class="user-role">Administrateur</div>
+                </div>
+                <button class="btn btn-secondary btn-sm" onclick="logout()">Déconnexion</button>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Contenu principal -->
+    <main class="container" style="padding: 2rem 0;">
+        <!-- Section Dashboard -->
+        <section id="dashboardSection">
+            <h1 class="mb-4">📊 Tableau de bord administrateur</h1>
+
+            <!-- Statistiques -->
+            <div class="grid grid-4 mb-4">
+                <div class="stat-card">
+                    <div class="stat-icon">👥</div>
+                    <div class="stat-value" id="statUsers">-</div>
+                    <div class="stat-label">Utilisateurs</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-icon">✅</div>
+                    <div class="stat-value" id="statEnrolled">-</div>
+                    <div class="stat-label">Enrôlés</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-icon">📝</div>
+                    <div class="stat-value" id="statExams">-</div>
+                    <div class="stat-label">Examens</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-icon">📈</div>
+                    <div class="stat-value" id="statSessions">-</div>
+                    <div class="stat-label">Sessions</div>
+                </div>
+            </div>
+
+            <div class="grid grid-2">
+                <div class="card">
+                    <div class="card-header">
+                        <h2 class="card-title">📊 Performances</h2>
+                    </div>
+                    <div class="card-body">
+                        <div class="surveillance-stats">
+                            <div class="surveillance-stat">
+                                <span>Score moyen</span>
+                                <span id="avgScore" class="badge badge-success">-</span>
+                            </div>
+                            <div class="surveillance-stat">
+                                <span>Sessions cette semaine</span>
+                                <span id="weekSessions" class="badge badge-info">-</span>
+                            </div>
+                            <div class="surveillance-stat">
+                                <span>Anomalies totales</span>
+                                <span id="totalAnomalies" class="badge badge-danger">-</span>
+                            </div>
+                            <div class="surveillance-stat">
+                                <span>Alertes cette semaine</span>
+                                <span id="weekAlerts" class="badge badge-warning">-</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <div class="card-header">
+                        <h2 class="card-title">⚡ Actions rapides</h2>
+                    </div>
+                    <div class="card-body">
+                        <div style="display: flex; flex-direction: column; gap: 1rem;">
+                            <button class="btn btn-primary btn-block" onclick="showCreateExamModal()">
+                                ➕ Créer un examen
+                            </button>
+                            <button class="btn btn-secondary btn-block" onclick="showSection('users')">
+                                👥 Gérer les utilisateurs
+                            </button>
+                            <button class="btn btn-secondary btn-block" onclick="showSection('logs')">
+                                📋 Voir les journaux
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Section Métriques Biométriques FAR/FRR -->
+            <div class="card mt-4">
+                <div class="card-header">
+                    <h2 class="card-title">🔬 Métriques Biométriques (FAR/FRR)</h2>
+                </div>
+                <div class="card-body">
+                    <div class="grid grid-3">
+                        <!-- Métriques Faciales -->
+                        <div class="stat-card" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);">
+                            <div class="stat-icon">👤</div>
+                            <div class="stat-value" id="faceSuccessRate">-</div>
+                            <div class="stat-label">Taux réussite facial</div>
+                            <div style="margin-top: 0.5rem; font-size: 0.8rem; opacity: 0.9;">
+                                <div>FRR: <span id="faceFRR">-</span>%</div>
+                                <div>Total: <span id="faceTotal">-</span> vérifications</div>
+                            </div>
+                        </div>
+                        
+                        <!-- Métriques Vocales -->
+                        <div class="stat-card" style="background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%);">
+                            <div class="stat-icon">🎤</div>
+                            <div class="stat-value" id="voiceSuccessRate">-</div>
+                            <div class="stat-label">Taux réussite vocal</div>
+                            <div style="margin-top: 0.5rem; font-size: 0.8rem; opacity: 0.9;">
+                                <div>FRR: <span id="voiceFRR">-</span>%</div>
+                                <div>Total: <span id="voiceTotal">-</span> vérifications</div>
+                            </div>
+                        </div>
+                        
+                        <!-- Métriques Login -->
+                        <div class="stat-card" style="background: linear-gradient(135deg, #fc4a1a 0%, #f7b733 100%);">
+                            <div class="stat-icon">🔐</div>
+                            <div class="stat-value" id="loginSuccessRate">-</div>
+                            <div class="stat-label">Taux réussite login</div>
+                            <div style="margin-top: 0.5rem; font-size: 0.8rem; opacity: 0.9;">
+                                <div>FRR: <span id="loginFRR">-</span>%</div>
+                                <div>Total: <span id="loginTotal">-</span> tentatives</div>
+                            </div>
+                        </div>
+                        
+                        <!-- Métriques FAR (Imposteurs) -->
+                        <div class="stat-card" style="background: linear-gradient(135deg, #d63031 0%, #e17055 100%);">
+                            <div class="stat-icon">🚨</div>
+                            <div class="stat-value" id="farRate">-</div>
+                            <div class="stat-label">FAR (False Accept Rate)</div>
+                            <div style="margin-top: 0.5rem; font-size: 0.8rem; opacity: 0.9;">
+                                <div>Imposteurs acceptés: <span id="impostorAccepted">-</span></div>
+                                <div>Imposteurs rejetés: <span id="impostorRejected">-</span></div>
+                                <div>Total tests: <span id="impostorTotal">-</span></div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Tableau détaillé -->
+                    <div class="table-container mt-4">
+                        <table class="table">
+                            <thead>
+                                <tr>
+                                    <th>Modalité</th>
+                                    <th>Succès</th>
+                                    <th>Échecs</th>
+                                    <th>Score moyen (succès)</th>
+                                    <th>Score moyen (échecs)</th>
+                                    <th>Seuil actuel</th>
+                                </tr>
+                            </thead>
+                            <tbody id="metricsTable">
+                                <tr>
+                                    <td colspan="6" class="text-center">Chargement...</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                    
+                    <div class="alert alert-info mt-3" style="background: #e3f2fd; border-left: 4px solid #2196f3; padding: 1rem;">
+                        <strong>ℹ️ Légende:</strong><br>
+                        <strong>FRR (False Rejection Rate)</strong> = % d'utilisateurs légitimes rejetés par erreur<br>
+                        <strong>FAR (False Acceptance Rate)</strong> = % d'imposteurs acceptés par erreur (nécessite des tests spécifiques)<br>
+                        <em>Un bon système biométrique vise FRR &lt; 5% et FAR &lt; 0.1%</em>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Section Test d'Imposteur pour FAR -->
+            <div class="card mt-4">
+                <div class="card-header" style="background: linear-gradient(135deg, #d63031 0%, #e17055 100%); color: white;">
+                    <h2 class="card-title">🎭 Test d'Imposteur (Calcul FAR)</h2>
+                </div>
+                <div class="card-body">
+                    <div class="alert alert-warning" style="background: #fff3cd; border-left: 4px solid #ffc107; padding: 1rem; margin-bottom: 1rem;">
+                        <strong>⚠️ Mode Test:</strong> Utilisez cette fonctionnalité pour tester si le système peut être trompé par un imposteur.<br>
+                        Capturez votre propre visage/voix et essayez de vous authentifier en tant qu'un autre utilisateur enrôlé.
+                    </div>
+                    
+                    <div class="grid grid-2" style="gap: 2rem;">
+                        <!-- Sélection utilisateur cible -->
+                        <div>
+                            <label class="form-label"><strong>1. Sélectionner l'utilisateur à usurper:</strong></label>
+                            <select id="targetUserSelect" class="form-control" onchange="updateTargetUser()">
+                                <option value="">-- Chargement des utilisateurs --</option>
+                            </select>
+                            <p id="targetUserInfo" style="margin-top: 0.5rem; color: #666;"></p>
+                        </div>
+                        
+                        <!-- Capture biométrique -->
+                        <div>
+                            <label class="form-label"><strong>2. Capturer vos données biométriques:</strong></label>
+                            <div style="display: flex; gap: 1rem; flex-wrap: wrap;">
+                                <button class="btn btn-primary" onclick="startImpostorCamera()">📷 Démarrer Caméra</button>
+                                <button class="btn btn-primary" onclick="captureImpostorFace()" id="captureImpostorBtn" disabled>📸 Capturer Visage</button>
+                                <button class="btn btn-secondary" onclick="startImpostorRecording()" id="startRecordBtn">🎤 Enregistrer Voix</button>
+                                <button class="btn btn-danger" onclick="stopImpostorRecording()" id="stopRecordBtn" disabled>⏹️ Arrêter</button>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Zone de prévisualisation -->
+                    <div class="grid grid-2 mt-4" style="gap: 2rem;">
+                        <div style="text-align: center;">
+                            <video id="impostorVideo" width="320" height="240" autoplay style="border: 2px solid #ddd; border-radius: 8px; background: #000;"></video>
+                            <canvas id="impostorCanvas" width="320" height="240" style="display: none;"></canvas>
+                            <p id="impostorFaceStatus" style="margin-top: 0.5rem;">📷 Caméra non démarrée</p>
+                        </div>
+                        <div style="text-align: center;">
+                            <div style="width: 320px; height: 240px; background: #1a1a2e; border-radius: 8px; display: flex; align-items: center; justify-content: center; margin: 0 auto;">
+                                <span id="impostorAudioStatus" style="color: white; font-size: 3rem;">🎤</span>
+                            </div>
+                            <p id="impostorVoiceStatus" style="margin-top: 0.5rem;">🎤 Micro non démarré</p>
+                        </div>
+                    </div>
+                    
+                    <!-- Bouton de test -->
+                    <div style="text-align: center; margin-top: 2rem;">
+                        <button class="btn btn-danger" onclick="runImpostorTest()" id="runImpostorTestBtn" disabled style="font-size: 1.2rem; padding: 1rem 2rem;">
+                            🎭 Lancer le Test d'Imposteur
+                        </button>
+                    </div>
+                    
+                    <!-- Résultat du test -->
+                    <div id="impostorTestResult" class="mt-4" style="display: none;">
+                        <h4>Résultat du test:</h4>
+                        <div id="impostorTestResultContent"></div>
+                    </div>
+                    
+                    <!-- Historique des tests -->
+                    <div class="mt-4">
+                        <h4>📊 Historique des tests d'imposteurs</h4>
+                        <div class="table-container">
+                            <table class="table">
+                                <thead>
+                                    <tr>
+                                        <th>Date</th>
+                                        <th>Utilisateur cible</th>
+                                        <th>Résultat</th>
+                                        <th>Score Face</th>
+                                        <th>Score Voice</th>
+                                        <th>Score Combiné</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="impostorHistoryTable">
+                                    <tr>
+                                        <td colspan="6" class="text-center">Aucun test effectué</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Section Anti-Spoofing -->
+            <div class="card mt-4">
+                <div class="card-header" style="background: linear-gradient(135deg, #6c5ce7 0%, #a29bfe 100%); color: white;">
+                    <h2 class="card-title">🛡️ Protection Anti-Spoofing (Détection de fraude)</h2>
+                </div>
+                <div class="card-body">
+                    <div class="grid grid-2 mb-4">
+                        <!-- Statut Anti-Spoofing -->
+                        <div class="stat-card" id="antispoofStatusCard" style="background: linear-gradient(135deg, #00b894 0%, #00cec9 100%);">
+                            <div class="stat-icon">🛡️</div>
+                            <div class="stat-value" id="antispoofStatus">-</div>
+                            <div class="stat-label">Statut Anti-Spoofing</div>
+                        </div>
+                        
+                        <!-- Tentatives de fraude détectées -->
+                        <div class="stat-card" style="background: linear-gradient(135deg, #e84393 0%, #fd79a8 100%);">
+                            <div class="stat-icon">🚨</div>
+                            <div class="stat-value" id="spoofingDetected">-</div>
+                            <div class="stat-label">Fraudes détectées</div>
+                        </div>
+                    </div>
+                    
+                    <!-- Méthodes de détection -->
+                    <div class="grid grid-2" style="gap: 2rem;">
+                        <div class="card" style="border: 2px solid #667eea;">
+                            <div class="card-header" style="background: #667eea; color: white;">
+                                <h3>👤 Détection Faciale</h3>
+                            </div>
+                            <div class="card-body">
+                                <ul style="list-style: none; padding: 0;">
+                                    <li style="padding: 0.5rem 0; border-bottom: 1px solid #eee;">
+                                        <strong>🔍 Texture LBP</strong><br>
+                                        <small>Analyse Local Binary Patterns pour détecter photos/écrans</small>
+                                    </li>
+                                    <li style="padding: 0.5rem 0; border-bottom: 1px solid #eee;">
+                                        <strong>📐 Détection de bords</strong><br>
+                                        <small>Compare densité des bords (photos vs visages réels)</small>
+                                    </li>
+                                    <li style="padding: 0.5rem 0; border-bottom: 1px solid #eee;">
+                                        <strong>🎨 Distribution couleurs</strong><br>
+                                        <small>Détecte les photos imprimées/écrans LCD</small>
+                                    </li>
+                                    <li style="padding: 0.5rem 0; border-bottom: 1px solid #eee;">
+                                        <strong>✨ Reflets d'écran</strong><br>
+                                        <small>Identifie les reflets caractéristiques des écrans</small>
+                                    </li>
+                                    <li style="padding: 0.5rem 0;">
+                                        <strong>👁️ Détection clignement</strong><br>
+                                        <small>Vérifie la présence de mouvements naturels</small>
+                                    </li>
+                                </ul>
+                            </div>
+                        </div>
+                        
+                        <div class="card" style="border: 2px solid #00b894;">
+                            <div class="card-header" style="background: #00b894; color: white;">
+                                <h3>🎤 Détection Vocale</h3>
+                            </div>
+                            <div class="card-body">
+                                <ul style="list-style: none; padding: 0;">
+                                    <li style="padding: 0.5rem 0; border-bottom: 1px solid #eee;">
+                                        <strong>📊 Qualité audio</strong><br>
+                                        <small>Analyse SNR et plage dynamique du signal</small>
+                                    </li>
+                                    <li style="padding: 0.5rem 0; border-bottom: 1px solid #eee;">
+                                        <strong>🔄 Artefacts replay</strong><br>
+                                        <small>Détecte les enregistrements rejoués</small>
+                                    </li>
+                                    <li style="padding: 0.5rem 0; border-bottom: 1px solid #eee;">
+                                        <strong>📈 Analyse spectrale</strong><br>
+                                        <small>Mesure la flatness spectrale (voix naturelle vs artificielle)</small>
+                                    </li>
+                                    <li style="padding: 0.5rem 0;">
+                                        <strong>🤖 Voix synthétique</strong><br>
+                                        <small>Détecte les voix générées par TTS/deepfake</small>
+                                    </li>
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Historique des fraudes -->
+                    <div class="mt-4">
+                        <h4>🚨 Dernières tentatives de fraude détectées</h4>
+                        <div class="table-container">
+                            <table class="table">
+                                <thead>
+                                    <tr>
+                                        <th>Date</th>
+                                        <th>Utilisateur</th>
+                                        <th>Type</th>
+                                        <th>Score Liveness</th>
+                                        <th>Détails</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="spoofingHistoryTable">
+                                    <tr>
+                                        <td colspan="5" class="text-center">Chargement...</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                    
+                    <!-- Configuration -->
+                    <div class="mt-4">
+                        <h4>⚙️ Configuration Anti-Spoofing</h4>
+                        <div class="table-container">
+                            <table class="table">
+                                <thead>
+                                    <tr>
+                                        <th>Paramètre</th>
+                                        <th>Valeur</th>
+                                        <th>Description</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="antispoofConfigTable">
+                                    <tr>
+                                        <td colspan="3" class="text-center">Chargement...</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Section Utilisateurs -->
+        <section id="usersSection" class="hidden">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem;">
+                <h1>👥 Gestion des utilisateurs</h1>
+                <div>
+                    <button class="btn btn-primary" onclick="showAddCandidatModal()">➕ Ajouter un candidat</button>
+                    <button class="btn btn-secondary" onclick="showSection('dashboard')">← Retour</button>
+                </div>
+            </div>
+
+            <div class="card">
+                <div class="card-header">
+                    <h2 class="card-title">Liste des utilisateurs</h2>
+                    <select class="form-control" style="width: auto;" onchange="filterUsers(this.value)">
+                        <option value="">Tous</option>
+                        <option value="candidat">Candidats</option>
+                        <option value="admin">Admins</option>
+                    </select>
+                </div>
+                <div class="table-container">
+                    <table class="table">
+                        <thead>
+                            <tr>
+                                <th>ID</th>
+                                <th>Nom</th>
+                                <th>Email</th>
+                                <th>Rôle</th>
+                                <th>Enrôlé</th>
+                                <th>Actif</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="usersTable">
+                            <tr>
+                                <td colspan="7" class="text-center">Chargement...</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </section>
+
+        <!-- Section Examens -->
+        <section id="examsSection" class="hidden">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem;">
+                <h1>📝 Gestion des examens</h1>
+                <div>
+                    <button class="btn btn-primary" onclick="showCreateExamModal()">➕ Créer un examen</button>
+                    <button class="btn btn-secondary" onclick="showSection('dashboard')">← Retour</button>
+                </div>
+            </div>
+
+            <div class="card">
+                <div class="table-container">
+                    <table class="table">
+                        <thead>
+                            <tr>
+                                <th>ID</th>
+                                <th>Titre</th>
+                                <th>Durée</th>
+                                <th>Statut</th>
+                                <th>Surveillance</th>
+                                <th>Créé le</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="examsTable">
+                            <tr>
+                                <td colspan="7" class="text-center">Chargement...</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </section>
+
+        <!-- Section Journaux -->
+        <section id="logsSection" class="hidden">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem;">
+                <h1>📋 Journaux de sécurité</h1>
+                <button class="btn btn-secondary" onclick="showSection('dashboard')">← Retour</button>
+            </div>
+
+            <div class="card">
+                <div class="card-header">
+                    <h2 class="card-title">Derniers événements</h2>
+                    <select class="form-control" style="width: auto;" onchange="filterLogs(this.value)">
+                        <option value="">Tous les types</option>
+                        <option value="login_success">Connexions réussies</option>
+                        <option value="login_failed">Connexions échouées</option>
+                        <option value="face_check_failed">Échecs faciaux</option>
+                        <option value="voice_check_failed">Échecs vocaux</option>
+                        <option value="absence_detected">Absences</option>
+                        <option value="anomaly_detected">Anomalies</option>
+                    </select>
+                </div>
+                <div class="table-container">
+                    <table class="table">
+                        <thead>
+                            <tr>
+                                <th>Date</th>
+                                <th>Type</th>
+                                <th>Utilisateur</th>
+                                <th>Message</th>
+                                <th>Scores</th>
+                            </tr>
+                        </thead>
+                        <tbody id="logsTable">
+                            <tr>
+                                <td colspan="5" class="text-center">Chargement...</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <!-- Modal création d'examen -->
+    <div id="createExamModal" class="modal-overlay">
+        <div class="modal" style="max-width: 600px;">
+            <div class="modal-header">
+                <h2 class="modal-title">Créer un examen</h2>
+                <button class="modal-close" onclick="hideCreateExamModal()">&times;</button>
+            </div>
+            <form id="createExamForm" onsubmit="createExam(event)">
+                <div class="modal-body">
+                    <div class="form-group">
+                        <label class="form-label">Titre</label>
+                        <input type="text" id="examTitle" class="form-control" required>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Description</label>
+                        <textarea id="examDescription" class="form-control"></textarea>
+                    </div>
+                    <div class="grid grid-2">
+                        <div class="form-group">
+                            <label class="form-label">Durée (minutes)</label>
+                            <input type="number" id="examDuration" class="form-control" value="60" min="5" required>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Statut</label>
+                            <select id="examStatus" class="form-control">
+                                <option value="draft">Brouillon</option>
+                                <option value="published">Publié</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="grid grid-2">
+                        <div class="form-group">
+                            <label style="display: flex; align-items: center; gap: 0.5rem;">
+                                <input type="checkbox" id="faceCheck" checked>
+                                Vérification faciale
+                            </label>
+                        </div>
+                        <div class="form-group">
+                            <label style="display: flex; align-items: center; gap: 0.5rem;">
+                                <input type="checkbox" id="voiceCheck" checked>
+                                Vérification vocale
+                            </label>
+                        </div>
+                    </div>
+                    
+                    <h3 class="mb-2">Questions</h3>
+                    <div id="questionsContainer"></div>
+                    <button type="button" class="btn btn-secondary btn-sm" onclick="addQuestion()">
+                        ➕ Ajouter une question
+                    </button>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" onclick="hideCreateExamModal()">Annuler</button>
+                    <button type="submit" class="btn btn-primary">Créer l'examen</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Modal ajout de candidat avec biométrie -->
+    <div id="addCandidatModal" class="modal-overlay">
+        <div class="modal" style="max-width: 800px;">
+            <div class="modal-header">
+                <h2 class="modal-title">➕ Ajouter un candidat avec biométrie</h2>
+                <button class="modal-close" onclick="hideAddCandidatModal()">&times;</button>
+            </div>
+            <form id="addCandidatForm" onsubmit="addCandidat(event)">
+                <div class="modal-body">
+                    <div id="addCandidatAlert" class="alert hidden"></div>
+                    
+                    <!-- Informations de base -->
+                    <h3 style="margin-bottom: 1rem; color: var(--text-secondary);">📋 Informations</h3>
+                    <div class="grid grid-2">
+                        <div class="form-group">
+                            <label class="form-label">Nom</label>
+                            <input type="text" id="candidatNom" class="form-control" placeholder="Dupont" required>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Prénom</label>
+                            <input type="text" id="candidatPrenom" class="form-control" placeholder="Jean" required>
+                        </div>
+                    </div>
+                    <div class="grid grid-2">
+                        <div class="form-group">
+                            <label class="form-label">Email</label>
+                            <input type="email" id="candidatEmail" class="form-control" placeholder="candidat@example.com" required>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Mot de passe</label>
+                            <input type="password" id="candidatPassword" class="form-control" placeholder="Minimum 6 caractères" required minlength="6">
+                        </div>
+                    </div>
+                    
+                    <hr style="margin: 1.5rem 0; border-color: var(--border-color);">
+                    
+                    <!-- Capture biométrique -->
+                    <h3 style="margin-bottom: 1rem; color: var(--text-secondary);">🔐 Données biométriques</h3>
+                    
+                    <div class="grid grid-2">
+                        <!-- Upload/Capture photo -->
+                        <div class="card" style="background: var(--bg-secondary);">
+                            <h4>📷 Photo du visage</h4>
+                            <div style="margin: 1rem 0;">
+                                <video id="candidatVideo" width="100%" style="border-radius: 8px; display: none;" autoplay muted playsinline></video>
+                                <canvas id="candidatCanvas" style="display: none;"></canvas>
+                                <img id="candidatPhotoPreview" style="width: 100%; border-radius: 8px; display: none;">
+                                <div id="photoPlaceholder" style="width: 100%; height: 200px; background: var(--bg-primary); border-radius: 8px; display: flex; align-items: center; justify-content: center; color: var(--text-secondary);">
+                                    📷 Aucune photo
+                                </div>
+                            </div>
+                            <div style="display: flex; flex-wrap: wrap; gap: 0.5rem;">
+                                <button type="button" class="btn btn-secondary btn-sm" onclick="startCandidatCamera()">
+                                    📷 Caméra
+                                </button>
+                                <button type="button" class="btn btn-primary btn-sm" id="capturePhotoBtn" onclick="captureCandidatPhoto()" style="display: none;">
+                                    ✅ Capturer
+                                </button>
+                                <label class="btn btn-info btn-sm" style="cursor: pointer; margin: 0;">
+                                    📁 Uploader photo
+                                    <input type="file" id="uploadPhotoInput" accept="image/*" onchange="uploadCandidatPhoto(event)" style="display: none;">
+                                </label>
+                            </div>
+                            <input type="hidden" id="candidatFaceImage">
+                        </div>
+                        
+                        <!-- Upload/Enregistrement vocal -->
+                        <div class="card" style="background: var(--bg-secondary);">
+                            <h4>🎤 Enregistrement vocal</h4>
+                            <p style="font-size: 0.9rem; color: var(--text-secondary); margin: 0.5rem 0;">
+                                Faire lire au candidat:
+                            </p>
+                            <div style="background: var(--bg-primary); padding: 0.75rem; border-radius: 8px; margin: 0.5rem 0; font-style: italic;">
+                                "Bonjour, je confirme mon identité pour passer cet examen."
+                            </div>
+                            <div id="voiceStatus" style="padding: 1rem; text-align: center; color: var(--text-secondary);">
+                                🎤 Aucun enregistrement
+                            </div>
+                            <div style="display: flex; flex-wrap: wrap; gap: 0.5rem;">
+                                <button type="button" class="btn btn-danger btn-sm" id="startVoiceBtn" onclick="startCandidatVoice()">
+                                    🎤 Enregistrer (5s)
+                                </button>
+                                <label class="btn btn-info btn-sm" style="cursor: pointer; margin: 0;">
+                                    📁 Uploader audio
+                                    <input type="file" id="uploadVoiceInput" accept="audio/*" onchange="uploadCandidatVoice(event)" style="display: none;">
+                                </label>
+                            </div>
+                            <input type="hidden" id="candidatVoiceAudio">
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" onclick="hideAddCandidatModal()">Annuler</button>
+                    <button type="submit" class="btn btn-primary" id="submitCandidatBtn">Ajouter le candidat</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Modal assignation candidat à examen -->
+    <div id="assignModal" class="modal-overlay">
+        <div class="modal" style="max-width: 600px;">
+            <div class="modal-header">
+                <h2 class="modal-title">👥 Assigner des candidats</h2>
+                <button class="modal-close" onclick="hideAssignModal()">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div id="assignAlert" class="alert hidden"></div>
+                <h3 id="assignExamTitle" class="mb-3">-</h3>
+                
+                <div class="form-group">
+                    <label class="form-label">Sélectionner un candidat</label>
+                    <select id="candidatSelect" class="form-control">
+                        <option value="">-- Choisir un candidat --</option>
+                    </select>
+                </div>
+                
+                <button class="btn btn-primary" onclick="assignCandidat()">➕ Assigner ce candidat</button>
+                
+                <hr style="margin: 1.5rem 0; border-color: var(--border-color);">
+                
+                <h4 class="mb-2">Candidats déjà assignés</h4>
+                <div id="assignedCandidats" class="table-container">
+                    <p style="color: var(--text-secondary);">Aucun candidat assigné</p>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" onclick="hideAssignModal()">Fermer</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="js/api.js"></script>
+    <script>
+        let questionCount = 0;
+
+        function logout() {
+            api.clearToken();
+            window.location.href = 'login.html';
+        }
+
+        function showSection(section) {
+            document.querySelectorAll('main section').forEach(s => s.classList.add('hidden'));
+            document.getElementById(section + 'Section').classList.remove('hidden');
+
+            if (section === 'users') loadUsers();
+            if (section === 'exams') loadExamsAdmin();
+            if (section === 'logs') loadLogs();
+        }
+
+        async function loadUserData() {
+            try {
+                const user = await api.getCurrentUser();
+                document.getElementById('userName').textContent = `${user.prenom} ${user.nom}`;
+
+                if (user.role !== 'admin') {
+                    window.location.href = 'dashboard.html';
+                }
+            } catch (error) {
+                logout();
+            }
+        }
+
+        async function loadStatistics() {
+            try {
+                const stats = await api.getStatistics();
+                
+                document.getElementById('statUsers').textContent = stats.total_users;
+                document.getElementById('statEnrolled').textContent = stats.total_enrolled;
+                document.getElementById('statExams').textContent = stats.total_exams;
+                document.getElementById('statSessions').textContent = stats.completed_sessions;
+                document.getElementById('avgScore').textContent = stats.average_score + '%';
+                document.getElementById('weekSessions').textContent = stats.sessions_this_week;
+                document.getElementById('totalAnomalies').textContent = stats.total_anomalies;
+                document.getElementById('weekAlerts').textContent = stats.alerts_this_week;
+                
+                // Charger les métriques biométriques
+                await loadBiometricMetrics();
+                
+                // Charger les stats anti-spoofing
+                await loadAntispoofStats();
+            } catch (error) {
+                console.error('Erreur:', error);
+            }
+        }
+        
+        async function loadBiometricMetrics() {
+            try {
+                const response = await fetch('/api/admin/biometric-metrics', {
+                    headers: {
+                        'Authorization': `Bearer ${localStorage.getItem('token')}`
+                    }
+                });
+                
+                if (!response.ok) throw new Error('Erreur chargement métriques');
+                
+                const metrics = await response.json();
+                
+                // Métriques faciales
+                const faceSuccessRate = metrics.face.success_rate;
+                document.getElementById('faceSuccessRate').textContent = faceSuccessRate + '%';
+                document.getElementById('faceFRR').textContent = metrics.face.frr_estimate;
+                document.getElementById('faceTotal').textContent = metrics.face.total_checks;
+                
+                // Métriques vocales
+                const voiceSuccessRate = metrics.voice.success_rate;
+                document.getElementById('voiceSuccessRate').textContent = voiceSuccessRate + '%';
+                document.getElementById('voiceFRR').textContent = metrics.voice.frr_estimate;
+                document.getElementById('voiceTotal').textContent = metrics.voice.total_checks;
+                
+                // Métriques login
+                const loginSuccessRate = metrics.login.total_attempts > 0 
+                    ? ((metrics.login.success / metrics.login.total_attempts) * 100).toFixed(2)
+                    : 0;
+                document.getElementById('loginSuccessRate').textContent = loginSuccessRate + '%';
+                document.getElementById('loginFRR').textContent = metrics.login.frr_estimate;
+                document.getElementById('loginTotal').textContent = metrics.login.total_attempts;
+                
+                // Métriques FAR
+                document.getElementById('farRate').textContent = metrics.far.far_rate + '%';
+                document.getElementById('impostorAccepted').textContent = metrics.far.impostor_accepted;
+                document.getElementById('impostorRejected').textContent = metrics.far.impostor_rejected;
+                document.getElementById('impostorTotal').textContent = metrics.far.total_impostor_tests;
+                
+                // Tableau détaillé
+                const tbody = document.getElementById('metricsTable');
+                tbody.innerHTML = `
+                    <tr>
+                        <td><strong>👤 Reconnaissance faciale</strong></td>
+                        <td><span class="badge badge-success">${metrics.face.success}</span></td>
+                        <td><span class="badge badge-danger">${metrics.face.failed}</span></td>
+                        <td>${metrics.face.avg_success_score.toFixed(3)}</td>
+                        <td>${metrics.face.avg_failed_score.toFixed(3)}</td>
+                        <td><span class="badge badge-info">${metrics.thresholds.face}</span></td>
+                    </tr>
+                    <tr>
+                        <td><strong>🎤 Reconnaissance vocale</strong></td>
+                        <td><span class="badge badge-success">${metrics.voice.success}</span></td>
+                        <td><span class="badge badge-danger">${metrics.voice.failed}</span></td>
+                        <td>${metrics.voice.avg_success_score.toFixed(3)}</td>
+                        <td>${metrics.voice.avg_failed_score.toFixed(3)}</td>
+                        <td><span class="badge badge-info">${metrics.thresholds.voice}</span></td>
+                    </tr>
+                    <tr>
+                        <td><strong>🔐 Login multimodal</strong></td>
+                        <td><span class="badge badge-success">${metrics.login.success}</span></td>
+                        <td><span class="badge badge-danger">${metrics.login.failed}</span></td>
+                        <td colspan="2">-</td>
+                        <td><span class="badge badge-info">${metrics.thresholds.multimodal}</span></td>
+                    </tr>
+                `;
+            } catch (error) {
+                console.error('Erreur chargement métriques biométriques:', error);
+            }
+        }
+        
+        async function loadAntispoofStats() {
+            try {
+                const response = await fetch('/api/admin/antispoof-stats', {
+                    headers: {
+                        'Authorization': `Bearer ${localStorage.getItem('token')}`
+                    }
+                });
+                
+                if (!response.ok) throw new Error('Erreur chargement stats anti-spoofing');
+                
+                const stats = await response.json();
+                
+                // Statut
+                const statusCard = document.getElementById('antispoofStatusCard');
+                if (stats.enabled) {
+                    document.getElementById('antispoofStatus').textContent = 'ACTIVÉ';
+                    statusCard.style.background = 'linear-gradient(135deg, #00b894 0%, #00cec9 100%)';
+                } else {
+                    document.getElementById('antispoofStatus').textContent = 'DÉSACTIVÉ';
+                    statusCard.style.background = 'linear-gradient(135deg, #636e72 0%, #b2bec3 100%)';
+                }
+                
+                // Nombre de fraudes
+                document.getElementById('spoofingDetected').textContent = stats.total_spoofing_detected;
+                
+                // Historique des fraudes
+                const historyBody = document.getElementById('spoofingHistoryTable');
+                if (stats.recent_spoofing_attempts && stats.recent_spoofing_attempts.length > 0) {
+                    historyBody.innerHTML = stats.recent_spoofing_attempts.map(attempt => {
+                        const date = attempt.date ? new Date(attempt.date).toLocaleString('fr-FR') : '-';
+                        const score = attempt.face_score || attempt.voice_score || 0;
+                        const type = attempt.message.includes('vocal') ? '🎤 Vocal' : '👤 Facial';
+                        return `
+                            <tr>
+                                <td>${date}</td>
+                                <td>${attempt.user || 'Inconnu'}</td>
+                                <td><span class="badge badge-warning">${type}</span></td>
+                                <td><span class="badge badge-danger">${score.toFixed(2)}</span></td>
+                                <td><small>${attempt.message}</small></td>
+                            </tr>
+                        `;
+                    }).join('');
+                } else {
+                    historyBody.innerHTML = `
+                        <tr>
+                            <td colspan="5" class="text-center" style="color: #00b894;">
+                                ✅ Aucune tentative de fraude détectée
+                            </td>
+                        </tr>
+                    `;
+                }
+                
+                // Configuration
+                const configBody = document.getElementById('antispoofConfigTable');
+                const config = stats.config;
+                configBody.innerHTML = `
+                    <tr>
+                        <td>Seuil texture LBP (visage)</td>
+                        <td>${config.face_texture_threshold}</td>
+                        <td>Détection photos/écrans via analyse de texture</td>
+                    </tr>
+                    <tr>
+                        <td>Seuil détection bords (visage)</td>
+                        <td>${config.face_edge_threshold}</td>
+                        <td>Comparaison densité des bords</td>
+                    </tr>
+                    <tr>
+                        <td>Seuil couleurs (visage)</td>
+                        <td>${config.face_color_threshold}</td>
+                        <td>Distribution couleurs naturelles vs artificielles</td>
+                    </tr>
+                    <tr>
+                        <td>Seuil reflets écran (visage)</td>
+                        <td>${config.face_reflection_threshold}</td>
+                        <td>Détection reflets caractéristiques d'écrans</td>
+                    </tr>
+                    <tr>
+                        <td>Seuil qualité audio (voix)</td>
+                        <td>${config.voice_quality_threshold}</td>
+                        <td>Analyse SNR et plage dynamique</td>
+                    </tr>
+                    <tr>
+                        <td>Seuil replay (voix)</td>
+                        <td>${config.voice_replay_threshold}</td>
+                        <td>Détection enregistrements rejoués</td>
+                    </tr>
+                    <tr>
+                        <td>Seuil spectral (voix)</td>
+                        <td>${config.voice_spectral_threshold}</td>
+                        <td>Analyse spectrale flatness</td>
+                    </tr>
+                    <tr>
+                        <td>Seuil voix synthétique</td>
+                        <td>${config.voice_synthetic_threshold}</td>
+                        <td>Détection TTS/deepfake audio</td>
+                    </tr>
+                    <tr style="background: #e3f2fd;">
+                        <td><strong>Score liveness minimum (visage)</strong></td>
+                        <td><strong>${config.min_face_liveness_score}</strong></td>
+                        <td>Score global requis pour passer l'anti-spoofing facial</td>
+                    </tr>
+                    <tr style="background: #e3f2fd;">
+                        <td><strong>Score liveness minimum (voix)</strong></td>
+                        <td><strong>${config.min_voice_liveness_score}</strong></td>
+                        <td>Score global requis pour passer l'anti-spoofing vocal</td>
+                    </tr>
+                `;
+            } catch (error) {
+                console.error('Erreur chargement stats anti-spoofing:', error);
+                document.getElementById('antispoofStatus').textContent = 'Erreur';
+            }
+        }
+
+        async function loadUsers(role = null) {
+            try {
+                const users = await api.getUsers(role);
+                const tbody = document.getElementById('usersTable');
+
+                tbody.innerHTML = users.map(user => `
+                    <tr>
+                        <td>${user.id}</td>
+                        <td>${user.prenom} ${user.nom}</td>
+                        <td>${user.email}</td>
+                        <td><span class="badge badge-${user.role === 'admin' ? 'warning' : 'info'}">${user.role}</span></td>
+                        <td>${user.is_enrolled ? '✅' : '❌'}</td>
+                        <td>${user.is_active ? '✅' : '❌'}</td>
+                        <td>
+                            <button class="btn btn-sm btn-secondary" onclick="viewUserLogs(${user.id})">📋 Logs</button>
+                            ${user.role !== 'admin' ? `<button class="btn btn-sm btn-danger" onclick="deleteUser(${user.id}, '${user.prenom} ${user.nom}')">🗑️ Supprimer</button>` : ''}
+                        </td>
+                    </tr>
+                `).join('');
+            } catch (error) {
+                console.error('Erreur:', error);
+            }
+        }
+
+        function filterUsers(role) {
+            loadUsers(role || null);
+        }
+
+        async function loadExamsAdmin() {
+            try {
+                const exams = await api.getExams();
+                const tbody = document.getElementById('examsTable');
+
+                tbody.innerHTML = exams.map(exam => `
+                    <tr>
+                        <td>${exam.id}</td>
+                        <td>${exam.title}</td>
+                        <td>${exam.duration_minutes} min</td>
+                        <td><span class="badge badge-${getStatusBadge(exam.status)}">${exam.status}</span></td>
+                        <td>
+                            ${exam.face_check_enabled ? '📷' : ''}
+                            ${exam.voice_check_enabled ? '🎤' : ''}
+                        </td>
+                        <td>${new Date(exam.created_at).toLocaleDateString('fr-FR')}</td>
+                        <td>
+                            ${exam.status === 'draft' ? `<button class="btn btn-sm btn-success" onclick="publishExam(${exam.id})">\u2705 Publier</button>` : ''}
+                            <button class="btn btn-sm btn-primary" onclick="showAssignModal(${exam.id}, '${exam.title}')">👥 Assigner</button>
+                        </td>
+                    </tr>
+                `).join('');
+            } catch (error) {
+                console.error('Erreur:', error);
+            }
+        }
+
+        async function loadLogs(logType = null) {
+            try {
+                const logs = await api.getSecurityLogs(null, logType);
+                const tbody = document.getElementById('logsTable');
+
+                tbody.innerHTML = logs.map(log => `
+                    <tr>
+                        <td>${new Date(log.created_at).toLocaleString('fr-FR')}</td>
+                        <td><span class="badge badge-${getLogBadge(log.log_type)}">${log.log_type}</span></td>
+                        <td>${log.user_id || '-'}</td>
+                        <td>${log.message || '-'}</td>
+                        <td>
+                            ${log.face_score ? `👤 ${(log.face_score * 100).toFixed(0)}%` : ''}
+                            ${log.voice_score ? `🎤 ${(log.voice_score * 100).toFixed(0)}%` : ''}
+                        </td>
+                    </tr>
+                `).join('');
+            } catch (error) {
+                console.error('Erreur:', error);
+            }
+        }
+
+        function filterLogs(logType) {
+            loadLogs(logType || null);
+        }
+
+        function viewUserLogs(userId) {
+            showSection('logs');
+            // TODO: Filtrer par utilisateur
+        }
+
+        async function deleteUser(userId, userName) {
+            if (!confirm(`⚠️ Êtes-vous sûr de vouloir supprimer "${userName}" ?\n\nCette action supprimera :\n- Le compte utilisateur\n- Toutes les données biométriques\n- Tous les logs de sécurité\n- Toutes les sessions d'examen\n\nCette action est IRRÉVERSIBLE !`)) {
+                return;
+            }
+            
+            try {
+                const response = await fetch(`/api/admin/users/${userId}`, {
+                    method: 'DELETE',
+                    headers: {
+                        'Authorization': `Bearer ${localStorage.getItem('token')}`
+                    }
+                });
+                
+                if (!response.ok) {
+                    const error = await response.json();
+                    throw new Error(error.detail || 'Erreur lors de la suppression');
+                }
+                
+                const result = await response.json();
+                alert('✅ ' + result.message);
+                loadUsers();
+                loadStats();
+            } catch (error) {
+                alert('❌ Erreur: ' + error.message);
+            }
+        }
+
+        function getStatusBadge(status) {
+            return { draft: 'warning', published: 'success', active: 'info' }[status] || 'secondary';
+        }
+
+        async function publishExam(examId) {
+            if (!confirm('Êtes-vous sûr de vouloir publier cet examen ? Les candidats pourront le voir.')) {
+                return;
+            }
+            
+            try {
+                await api.publishExam(examId);
+                alert('✅ Examen publié avec succès !');
+                loadExamsAdmin();
+            } catch (error) {
+                alert('Erreur: ' + error.message);
+            }
+        }
+
+        function getLogBadge(logType) {
+            if (logType.includes('success')) return 'success';
+            if (logType.includes('failed') || logType.includes('detected')) return 'danger';
+            return 'info';
+        }
+
+        // Gestion des modales
+        function showCreateExamModal() {
+            document.getElementById('createExamModal').classList.add('active');
+            questionCount = 0;
+            document.getElementById('questionsContainer').innerHTML = '';
+            addQuestion();
+        }
+
+        function hideCreateExamModal() {
+            document.getElementById('createExamModal').classList.remove('active');
+        }
+
+        // Modal ajout candidat
+        function showAddCandidatModal() {
+            document.getElementById('addCandidatModal').classList.add('active');
+            document.getElementById('addCandidatForm').reset();
+            document.getElementById('addCandidatAlert').classList.add('hidden');
+        }
+
+        function hideAddCandidatModal() {
+            document.getElementById('addCandidatModal').classList.remove('active');
+        }
+
+        // Modal assignation candidat
+        let currentExamId = null;
+
+        async function showAssignModal(examId, examTitle) {
+            currentExamId = examId;
+            document.getElementById('assignModal').classList.add('active');
+            document.getElementById('assignExamTitle').textContent = `Examen: ${examTitle}`;
+            document.getElementById('assignAlert').classList.add('hidden');
+            
+            // Charger la liste des candidats
+            try {
+                const users = await api.getUsers('candidat');
+                const select = document.getElementById('candidatSelect');
+                select.innerHTML = '<option value="">-- Choisir un candidat --</option>' +
+                    users.map(u => `<option value="${u.id}">${u.prenom} ${u.nom} (${u.email})</option>`).join('');
+            } catch (error) {
+                console.error('Erreur:', error);
+            }
+            
+            // Charger les candidats déjà assignés
+            await loadAssignedCandidats();
+        }
+
+        function hideAssignModal() {
+            document.getElementById('assignModal').classList.remove('active');
+            currentExamId = null;
+        }
+
+        async function loadAssignedCandidats() {
+            try {
+                const sessions = await api.getExamSessions(currentExamId);
+                const container = document.getElementById('assignedCandidats');
+                
+                if (sessions.length === 0) {
+                    container.innerHTML = '<p style="color: var(--text-secondary);">Aucun candidat assigné</p>';
+                    return;
+                }
+                
+                container.innerHTML = `
+                    <table class="table">
+                        <thead>
+                            <tr>
+                                <th>Candidat</th>
+                                <th>Email</th>
+                                <th>Statut</th>
+                                <th>Score</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${sessions.map(s => `
+                                <tr>
+                                    <td>${s.user_name}</td>
+                                    <td>${s.user_email}</td>
+                                    <td><span class="badge badge-${getSessionBadge(s.status)}">${s.status}</span></td>
+                                    <td>${s.score !== null ? s.score + '%' : '-'}</td>
+                                </tr>
+                            `).join('')}
+                        </tbody>
+                    </table>
+                `;
+            } catch (error) {
+                console.error('Erreur:', error);
+            }
+        }
+
+        function getSessionBadge(status) {
+            return {
+                pending: 'warning',
+                in_progress: 'info',
+                completed: 'success',
+                suspended: 'danger',
+                terminated: 'danger'
+            }[status] || 'secondary';
+        }
+
+        async function assignCandidat() {
+            const userId = document.getElementById('candidatSelect').value;
+            
+            if (!userId) {
+                const alertEl = document.getElementById('assignAlert');
+                alertEl.textContent = 'Veuillez sélectionner un candidat';
+                alertEl.className = 'alert alert-warning';
+                alertEl.classList.remove('hidden');
+                return;
+            }
+            
+            try {
+                await api.assignCandidateToExam(parseInt(userId), currentExamId);
+                
+                const alertEl = document.getElementById('assignAlert');
+                alertEl.textContent = '✅ Candidat assigné avec succès !';
+                alertEl.className = 'alert alert-success';
+                alertEl.classList.remove('hidden');
+                
+                // Recharger la liste
+                await loadAssignedCandidats();
+                document.getElementById('candidatSelect').value = '';
+            } catch (error) {
+                const alertEl = document.getElementById('assignAlert');
+                alertEl.textContent = error.message;
+                alertEl.className = 'alert alert-danger';
+                alertEl.classList.remove('hidden');
+            }
+        }
+
+        async function addCandidat(event) {
+            event.preventDefault();
+            
+            // Vérifier que les données biométriques sont capturées
+            const faceImage = document.getElementById('candidatFaceImage').value;
+            const voiceAudio = document.getElementById('candidatVoiceAudio').value;
+            
+            if (!faceImage) {
+                showAddCandidatAlert('Veuillez capturer la photo du candidat', 'warning');
+                return;
+            }
+            
+            if (!voiceAudio) {
+                showAddCandidatAlert('Veuillez enregistrer la voix du candidat', 'warning');
+                return;
+            }
+            
+            const candidateData = {
+                nom: document.getElementById('candidatNom').value,
+                prenom: document.getElementById('candidatPrenom').value,
+                email: document.getElementById('candidatEmail').value,
+                password: document.getElementById('candidatPassword').value,
+                face_image_base64: faceImage,
+                voice_audio_base64: voiceAudio
+            };
+
+            try {
+                document.getElementById('submitCandidatBtn').disabled = true;
+                document.getElementById('submitCandidatBtn').textContent = 'Création en cours...';
+                
+                await api.createCandidateWithBiometric(candidateData);
+                hideAddCandidatModal();
+                alert('✅ Candidat créé avec succès avec ses données biométriques !');
+                loadUsers();
+                loadStatistics();
+            } catch (error) {
+                showAddCandidatAlert(error.message, 'danger');
+            } finally {
+                document.getElementById('submitCandidatBtn').disabled = false;
+                document.getElementById('submitCandidatBtn').textContent = 'Ajouter le candidat';
+            }
+        }
+        
+        function showAddCandidatAlert(message, type) {
+            const alertEl = document.getElementById('addCandidatAlert');
+            alertEl.textContent = message;
+            alertEl.className = `alert alert-${type}`;
+            alertEl.classList.remove('hidden');
+        }
+        
+        // Variables pour la capture biométrique
+        let candidatVideoStream = null;
+        let candidatMediaRecorder = null;
+        let candidatAudioChunks = [];
+        
+        async function startCandidatCamera() {
+            try {
+                const video = document.getElementById('candidatVideo');
+                candidatVideoStream = await navigator.mediaDevices.getUserMedia({ 
+                    video: { width: 640, height: 480, facingMode: 'user' } 
+                });
+                video.srcObject = candidatVideoStream;
+                video.style.display = 'block';
+                document.getElementById('photoPlaceholder').style.display = 'none';
+                document.getElementById('candidatPhotoPreview').style.display = 'none';
+                document.getElementById('capturePhotoBtn').style.display = 'inline-block';
+            } catch (error) {
+                showAddCandidatAlert('Impossible d\'accéder à la caméra: ' + error.message, 'danger');
+            }
+        }
+        
+        function captureCandidatPhoto() {
+            const video = document.getElementById('candidatVideo');
+            const canvas = document.getElementById('candidatCanvas');
+            const preview = document.getElementById('candidatPhotoPreview');
+            
+            canvas.width = video.videoWidth;
+            canvas.height = video.videoHeight;
+            canvas.getContext('2d').drawImage(video, 0, 0);
+            
+            const imageData = canvas.toDataURL('image/jpeg', 0.8);
+            document.getElementById('candidatFaceImage').value = imageData;
+            
+            preview.src = imageData;
+            preview.style.display = 'block';
+            video.style.display = 'none';
+            document.getElementById('capturePhotoBtn').style.display = 'none';
+            
+            // Arrêter la caméra
+            if (candidatVideoStream) {
+                candidatVideoStream.getTracks().forEach(track => track.stop());
+                candidatVideoStream = null;
+            }
+            
+            showAddCandidatAlert('✅ Photo capturée avec succès !', 'success');
+        }
+        
+        async function startCandidatVoice() {
+            try {
+                const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                candidatAudioChunks = [];
+                
+                candidatMediaRecorder = new MediaRecorder(stream, { mimeType: 'audio/webm' });
+                
+                candidatMediaRecorder.ondataavailable = (event) => {
+                    candidatAudioChunks.push(event.data);
+                };
+                
+                candidatMediaRecorder.onstop = async () => {
+                    stream.getTracks().forEach(track => track.stop());
+                    
+                    const audioBlob = new Blob(candidatAudioChunks, { type: 'audio/webm' });
+                    
+                    // Convertir en base64
+                    const reader = new FileReader();
+                    reader.onloadend = () => {
+                        document.getElementById('candidatVoiceAudio').value = reader.result;
+                        document.getElementById('voiceStatus').innerHTML = '✅ Enregistrement terminé !';
+                        document.getElementById('voiceStatus').style.color = 'var(--success)';
+                        document.getElementById('startVoiceBtn').textContent = '🎤 Ré-enregistrer';
+                        document.getElementById('startVoiceBtn').disabled = false;
+                        showAddCandidatAlert('✅ Voix enregistrée avec succès !', 'success');
+                    };
+                    reader.readAsDataURL(audioBlob);
+                };
+                
+                candidatMediaRecorder.start();
+                document.getElementById('voiceStatus').innerHTML = '🔴 Enregistrement en cours...';
+                document.getElementById('voiceStatus').style.color = 'var(--danger)';
+                document.getElementById('startVoiceBtn').disabled = true;
+                document.getElementById('startVoiceBtn').textContent = 'Enregistrement...';
+                
+                // Arrêter après 5 secondes
+                setTimeout(() => {
+                    if (candidatMediaRecorder && candidatMediaRecorder.state === 'recording') {
+                        candidatMediaRecorder.stop();
+                    }
+                }, 5000);
+                
+            } catch (error) {
+                showAddCandidatAlert('Impossible d\'accéder au microphone: ' + error.message, 'danger');
+            }
+        }
+        
+        // Upload photo depuis fichier
+        function uploadCandidatPhoto(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+            
+            // Vérifier le type
+            if (!file.type.startsWith('image/')) {
+                showAddCandidatAlert('Veuillez sélectionner un fichier image', 'warning');
+                return;
+            }
+            
+            const reader = new FileReader();
+            reader.onloadend = () => {
+                const imageData = reader.result;
+                document.getElementById('candidatFaceImage').value = imageData;
+                
+                const preview = document.getElementById('candidatPhotoPreview');
+                preview.src = imageData;
+                preview.style.display = 'block';
+                document.getElementById('photoPlaceholder').style.display = 'none';
+                document.getElementById('candidatVideo').style.display = 'none';
+                document.getElementById('capturePhotoBtn').style.display = 'none';
+                
+                // Arrêter la caméra si active
+                if (candidatVideoStream) {
+                    candidatVideoStream.getTracks().forEach(track => track.stop());
+                    candidatVideoStream = null;
+                }
+                
+                showAddCandidatAlert('✅ Photo uploadée avec succès !', 'success');
+            };
+            reader.readAsDataURL(file);
+        }
+        
+        // Upload audio depuis fichier
+        function uploadCandidatVoice(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+            
+            // Vérifier le type
+            if (!file.type.startsWith('audio/')) {
+                showAddCandidatAlert('Veuillez sélectionner un fichier audio', 'warning');
+                return;
+            }
+            
+            const reader = new FileReader();
+            reader.onloadend = () => {
+                document.getElementById('candidatVoiceAudio').value = reader.result;
+                document.getElementById('voiceStatus').innerHTML = '✅ Audio uploadé: ' + file.name;
+                document.getElementById('voiceStatus').style.color = 'var(--success)';
+                
+                showAddCandidatAlert('✅ Audio uploadé avec succès !', 'success');
+            };
+            reader.readAsDataURL(file);
+        }
+        
+        // Nettoyer lors de la fermeture du modal
+        function hideAddCandidatModal() {
+            document.getElementById('addCandidatModal').classList.remove('active');
+            
+            // Arrêter la caméra si active
+            if (candidatVideoStream) {
+                candidatVideoStream.getTracks().forEach(track => track.stop());
+                candidatVideoStream = null;
+            }
+            
+            // Réinitialiser le formulaire
+            document.getElementById('addCandidatForm').reset();
+            document.getElementById('candidatFaceImage').value = '';
+            document.getElementById('candidatVoiceAudio').value = '';
+            document.getElementById('candidatVideo').style.display = 'none';
+            document.getElementById('candidatPhotoPreview').style.display = 'none';
+            document.getElementById('photoPlaceholder').style.display = 'flex';
+            document.getElementById('capturePhotoBtn').style.display = 'none';
+            document.getElementById('voiceStatus').innerHTML = '🎤 Aucun enregistrement';
+            document.getElementById('voiceStatus').style.color = 'var(--text-secondary)';
+            document.getElementById('startVoiceBtn').textContent = '🎤 Enregistrer (5s)';
+            document.getElementById('startVoiceBtn').disabled = false;
+            document.getElementById('addCandidatAlert').classList.add('hidden');
+        }
+
+        function addQuestion() {
+            questionCount++;
+            const container = document.getElementById('questionsContainer');
+            
+            const questionHtml = `
+                <div class="card mb-2" style="background: var(--bg-secondary);" id="question${questionCount}">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+                        <strong>Question ${questionCount}</strong>
+                        <button type="button" class="btn btn-sm btn-danger" onclick="removeQuestion(${questionCount})">🗑️</button>
+                    </div>
+                    <div class="form-group">
+                        <input type="text" class="form-control question-text" placeholder="Texte de la question" required>
+                    </div>
+                    <div class="form-group">
+                        <input type="text" class="form-control option-1" placeholder="Option 1" required>
+                    </div>
+                    <div class="form-group">
+                        <input type="text" class="form-control option-2" placeholder="Option 2" required>
+                    </div>
+                    <div class="form-group">
+                        <input type="text" class="form-control option-3" placeholder="Option 3">
+                    </div>
+                    <div class="form-group">
+                        <input type="text" class="form-control option-4" placeholder="Option 4">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Bonne réponse (1-4)</label>
+                        <select class="form-control correct-answer">
+                            <option value="0">Option 1</option>
+                            <option value="1">Option 2</option>
+                            <option value="2">Option 3</option>
+                            <option value="3">Option 4</option>
+                        </select>
+                    </div>
+                </div>
+            `;
+            
+            container.insertAdjacentHTML('beforeend', questionHtml);
+        }
+
+        function removeQuestion(id) {
+            document.getElementById('question' + id)?.remove();
+        }
+
+        async function createExam(event) {
+            event.preventDefault();
+
+            const questions = [];
+            document.querySelectorAll('#questionsContainer .card').forEach((card, index) => {
+                const options = [
+                    card.querySelector('.option-1').value,
+                    card.querySelector('.option-2').value,
+                    card.querySelector('.option-3')?.value,
+                    card.querySelector('.option-4')?.value
+                ].filter(o => o);
+
+                questions.push({
+                    id: index + 1,
+                    text: card.querySelector('.question-text').value,
+                    options: options,
+                    correct_answer: parseInt(card.querySelector('.correct-answer').value),
+                    points: 1.0
+                });
+            });
+
+            const examData = {
+                title: document.getElementById('examTitle').value,
+                description: document.getElementById('examDescription').value,
+                duration_minutes: parseInt(document.getElementById('examDuration').value),
+                face_check_enabled: document.getElementById('faceCheck').checked,
+                voice_check_enabled: document.getElementById('voiceCheck').checked,
+                questions: questions
+            };
+
+            try {
+                await api.createExam(examData);
+                hideCreateExamModal();
+                alert('Examen créé avec succès !');
+                loadExamsAdmin();
+                loadStatistics();
+            } catch (error) {
+                alert('Erreur: ' + error.message);
+            }
+        }
+
+        // ==================== TEST D'IMPOSTEUR (FAR) ====================
+        
+        let impostorStream = null;
+        let impostorVideo = null;
+        let impostorCanvas = null;
+        let impostorFaceImage = null;
+        let impostorVoiceAudio = null;
+        let impostorMediaRecorder = null;
+        let impostorAudioChunks = [];
+        let impostorAudioContext = null;
+        
+        async function loadEnrolledUsers() {
+            try {
+                const response = await fetch('/api/admin/enrolled-users', {
+                    headers: {
+                        'Authorization': `Bearer ${localStorage.getItem('token')}`
+                    }
+                });
+                
+                if (!response.ok) throw new Error('Erreur chargement utilisateurs');
+                
+                const users = await response.json();
+                const select = document.getElementById('targetUserSelect');
+                
+                select.innerHTML = '<option value="">-- Sélectionner un utilisateur --</option>';
+                users.forEach(user => {
+                    const option = document.createElement('option');
+                    option.value = user.id;
+                    option.textContent = `${user.prenom} ${user.nom} (${user.email})`;
+                    select.appendChild(option);
+                });
+                
+            } catch (error) {
+                console.error('Erreur:', error);
+            }
+        }
+        
+        function updateTargetUser() {
+            const select = document.getElementById('targetUserSelect');
+            const info = document.getElementById('targetUserInfo');
+            
+            if (select.value) {
+                info.innerHTML = `<span style="color: green;">✅ Utilisateur sélectionné</span>`;
+                checkImpostorTestReady();
+            } else {
+                info.innerHTML = '';
+            }
+        }
+        
+        async function startImpostorCamera() {
+            try {
+                impostorVideo = document.getElementById('impostorVideo');
+                impostorCanvas = document.getElementById('impostorCanvas');
+                
+                impostorStream = await navigator.mediaDevices.getUserMedia({
+                    video: { width: 640, height: 480, facingMode: 'user' },
+                    audio: false
+                });
+                
+                impostorVideo.srcObject = impostorStream;
+                await impostorVideo.play();
+                
+                document.getElementById('captureImpostorBtn').disabled = false;
+                document.getElementById('impostorFaceStatus').innerHTML = '<span style="color: green;">📷 Caméra active</span>';
+                
+            } catch (error) {
+                alert('Erreur accès caméra: ' + error.message);
+            }
+        }
+        
+        function captureImpostorFace() {
+            if (!impostorStream) {
+                alert('Démarrez d\'abord la caméra');
+                return;
+            }
+            
+            const ctx = impostorCanvas.getContext('2d');
+            impostorCanvas.width = impostorVideo.videoWidth;
+            impostorCanvas.height = impostorVideo.videoHeight;
+            ctx.drawImage(impostorVideo, 0, 0);
+            
+            impostorFaceImage = impostorCanvas.toDataURL('image/jpeg', 0.8);
+            document.getElementById('impostorFaceStatus').innerHTML = '<span style="color: green;">✅ Visage capturé!</span>';
+            
+            checkImpostorTestReady();
+        }
+        
+        async function startImpostorRecording() {
+            try {
+                const stream = await navigator.mediaDevices.getUserMedia({
+                    audio: {
+                        echoCancellation: true,
+                        noiseSuppression: true,
+                        sampleRate: 16000
+                    }
+                });
+                
+                impostorAudioContext = new (window.AudioContext || window.webkitAudioContext)({ sampleRate: 16000 });
+                const source = impostorAudioContext.createMediaStreamSource(stream);
+                const processor = impostorAudioContext.createScriptProcessor(4096, 1, 1);
+                
+                impostorAudioChunks = [];
+                
+                processor.onaudioprocess = (e) => {
+                    const inputData = e.inputBuffer.getChannelData(0);
+                    impostorAudioChunks.push(new Float32Array(inputData));
+                };
+                
+                source.connect(processor);
+                processor.connect(impostorAudioContext.destination);
+                
+                impostorMediaRecorder = { stream, processor, source };
+                
+                document.getElementById('startRecordBtn').disabled = true;
+                document.getElementById('stopRecordBtn').disabled = false;
+                document.getElementById('impostorAudioStatus').textContent = '🔴';
+                document.getElementById('impostorVoiceStatus').innerHTML = '<span style="color: red;">🔴 Enregistrement en cours...</span>';
+                
+            } catch (error) {
+                alert('Erreur accès micro: ' + error.message);
+            }
+        }
+        
+        async function stopImpostorRecording() {
+            if (!impostorMediaRecorder) return;
+            
+            impostorMediaRecorder.processor.disconnect();
+            impostorMediaRecorder.source.disconnect();
+            impostorMediaRecorder.stream.getTracks().forEach(track => track.stop());
+            
+            // Combiner les chunks
+            const totalLength = impostorAudioChunks.reduce((acc, chunk) => acc + chunk.length, 0);
+            const audioData = new Float32Array(totalLength);
+            let offset = 0;
+            for (const chunk of impostorAudioChunks) {
+                audioData.set(chunk, offset);
+                offset += chunk.length;
+            }
+            
+            // Convertir en WAV
+            const wavBlob = createWavBlob(audioData, impostorAudioContext.sampleRate);
+            
+            // Convertir en base64
+            const reader = new FileReader();
+            reader.onloadend = () => {
+                impostorVoiceAudio = reader.result;
+                document.getElementById('impostorAudioStatus').textContent = '✅';
+                document.getElementById('impostorVoiceStatus').innerHTML = '<span style="color: green;">✅ Voix enregistrée!</span>';
+                checkImpostorTestReady();
+            };
+            reader.readAsDataURL(wavBlob);
+            
+            document.getElementById('startRecordBtn').disabled = false;
+            document.getElementById('stopRecordBtn').disabled = true;
+            
+            impostorMediaRecorder = null;
+        }
+        
+        function createWavBlob(audioData, sampleRate) {
+            const numChannels = 1;
+            const bitsPerSample = 16;
+            const bytesPerSample = bitsPerSample / 8;
+            const blockAlign = numChannels * bytesPerSample;
+            
+            const samples = new Int16Array(audioData.length);
+            for (let i = 0; i < audioData.length; i++) {
+                const s = Math.max(-1, Math.min(1, audioData[i]));
+                samples[i] = s < 0 ? s * 0x8000 : s * 0x7FFF;
+            }
+            
+            const dataSize = samples.length * bytesPerSample;
+            const buffer = new ArrayBuffer(44 + dataSize);
+            const view = new DataView(buffer);
+            
+            // WAV Header
+            const writeString = (offset, string) => {
+                for (let i = 0; i < string.length; i++) {
+                    view.setUint8(offset + i, string.charCodeAt(i));
+                }
+            };
+            
+            writeString(0, 'RIFF');
+            view.setUint32(4, 36 + dataSize, true);
+            writeString(8, 'WAVE');
+            writeString(12, 'fmt ');
+            view.setUint32(16, 16, true);
+            view.setUint16(20, 1, true);
+            view.setUint16(22, numChannels, true);
+            view.setUint32(24, sampleRate, true);
+            view.setUint32(28, sampleRate * blockAlign, true);
+            view.setUint16(32, blockAlign, true);
+            view.setUint16(34, bitsPerSample, true);
+            writeString(36, 'data');
+            view.setUint32(40, dataSize, true);
+            
+            const dataView = new Int16Array(buffer, 44);
+            dataView.set(samples);
+            
+            return new Blob([buffer], { type: 'audio/wav' });
+        }
+        
+        function checkImpostorTestReady() {
+            const targetUser = document.getElementById('targetUserSelect').value;
+            const hasData = impostorFaceImage || impostorVoiceAudio;
+            
+            document.getElementById('runImpostorTestBtn').disabled = !(targetUser && hasData);
+        }
+        
+        async function runImpostorTest() {
+            const targetUserId = document.getElementById('targetUserSelect').value;
+            
+            if (!targetUserId) {
+                alert('Sélectionnez un utilisateur cible');
+                return;
+            }
+            
+            if (!impostorFaceImage && !impostorVoiceAudio) {
+                alert('Capturez au moins votre visage ou votre voix');
+                return;
+            }
+            
+            const btn = document.getElementById('runImpostorTestBtn');
+            btn.disabled = true;
+            btn.textContent = '⏳ Test en cours...';
+            
+            try {
+                const response = await fetch('/api/admin/test-impostor', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${localStorage.getItem('token')}`
+                    },
+                    body: JSON.stringify({
+                        target_user_id: parseInt(targetUserId),
+                        face_image_base64: impostorFaceImage,
+                        voice_audio_base64: impostorVoiceAudio
+                    })
+                });
+                
+                const result = await response.json();
+                
+                if (!response.ok) {
+                    throw new Error(result.detail || 'Erreur lors du test');
+                }
+                
+                // Afficher le résultat
+                const resultDiv = document.getElementById('impostorTestResult');
+                const contentDiv = document.getElementById('impostorTestResultContent');
+                
+                const bgColor = result.impostor_accepted ? '#ffebee' : '#e8f5e9';
+                const borderColor = result.impostor_accepted ? '#f44336' : '#4caf50';
+                
+                contentDiv.innerHTML = `
+                    <div style="background: ${bgColor}; border-left: 4px solid ${borderColor}; padding: 1rem; border-radius: 4px;">
+                        <h4>${result.result}</h4>
+                        <p><strong>Utilisateur cible:</strong> ${result.target_user}</p>
+                        <p><strong>Scores:</strong></p>
+                        <ul>
+                            <li>Visage: ${result.scores.face} (seuil min: ${result.thresholds.face_min})</li>
+                            <li>Voix: ${result.scores.voice} (seuil min: ${result.thresholds.voice_min})</li>
+                            <li>Combiné: ${result.scores.combined} (seuil min: ${result.thresholds.combined_min})</li>
+                        </ul>
+                        <p><strong>Type de log:</strong> ${result.log_type}</p>
+                    </div>
+                `;
+                resultDiv.style.display = 'block';
+                
+                // Recharger les métriques FAR
+                await loadBiometricMetrics();
+                await loadImpostorHistory();
+                
+            } catch (error) {
+                alert('Erreur: ' + error.message);
+            } finally {
+                btn.disabled = false;
+                btn.textContent = '🎭 Lancer le Test d\'Imposteur';
+            }
+        }
+        
+        async function loadImpostorHistory() {
+            try {
+                const response = await fetch('/api/admin/security-logs?log_type=impostor_attempt&limit=10', {
+                    headers: {
+                        'Authorization': `Bearer ${localStorage.getItem('token')}`
+                    }
+                });
+                
+                // Aussi récupérer les rejets
+                const response2 = await fetch('/api/admin/security-logs?log_type=impostor_rejected&limit=10', {
+                    headers: {
+                        'Authorization': `Bearer ${localStorage.getItem('token')}`
+                    }
+                });
+                
+                let logs = [];
+                if (response.ok) {
+                    logs = logs.concat(await response.json());
+                }
+                if (response2.ok) {
+                    logs = logs.concat(await response2.json());
+                }
+                
+                // Trier par date
+                logs.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+                logs = logs.slice(0, 10);
+                
+                const tbody = document.getElementById('impostorHistoryTable');
+                
+                if (logs.length === 0) {
+                    tbody.innerHTML = '<tr><td colspan="6" class="text-center">Aucun test effectué</td></tr>';
+                    return;
+                }
+                
+                tbody.innerHTML = logs.map(log => `
+                    <tr>
+                        <td>${new Date(log.created_at).toLocaleString()}</td>
+                        <td>User #${log.user_id}</td>
+                        <td>
+                            <span class="badge ${log.log_type === 'impostor_attempt' ? 'badge-danger' : 'badge-success'}">
+                                ${log.log_type === 'impostor_attempt' ? '⚠️ Accepté' : '✅ Rejeté'}
+                            </span>
+                        </td>
+                        <td>${log.face_score ? log.face_score.toFixed(3) : '-'}</td>
+                        <td>${log.voice_score ? log.voice_score.toFixed(3) : '-'}</td>
+                        <td>${log.combined_score ? log.combined_score.toFixed(3) : '-'}</td>
+                    </tr>
+                `).join('');
+                
+            } catch (error) {
+                console.error('Erreur chargement historique:', error);
+            }
+        }
+
+        // Initialisation
+        document.addEventListener('DOMContentLoaded', async () => {
+            if (!localStorage.getItem('access_token')) {
+                window.location.href = 'login.html';
+                return;
+            }
+
+            await loadUserData();
+            await loadStatistics();
+            await loadEnrolledUsers();
+            await loadImpostorHistory();
+        });
+    </script>
+</body>
+</html>

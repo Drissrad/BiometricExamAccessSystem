@@ -1,0 +1,334 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Enrôlement Biométrique - Biométrie Examen</title>
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+    <!-- Navigation -->
+    <nav class="navbar">
+        <div class="container">
+            <a href="dashboard.html" class="navbar-brand">
+                <span class="icon">🔐</span>
+                <span>Biométrie Examen</span>
+            </a>
+
+            <ul class="navbar-nav">
+                <li><a href="dashboard.html">Tableau de bord</a></li>
+                <li><a href="exams.html">Examens</a></li>
+                <li><a href="enroll.html" class="active">Enrôlement</a></li>
+            </ul>
+
+            <div class="user-menu">
+                <div class="user-info">
+                    <div class="user-name" id="userName">-</div>
+                    <div class="user-role" id="userRole">-</div>
+                </div>
+                <button class="btn btn-secondary btn-sm" onclick="logout()">Déconnexion</button>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Contenu principal -->
+    <main class="container" style="padding: 2rem 0;">
+        <h1 class="mb-2">Enrôlement Biométrique</h1>
+        <p class="mb-4" style="color: var(--text-secondary);">
+            Enregistrez votre visage et votre voix pour sécuriser vos examens.
+        </p>
+
+        <!-- Statut actuel -->
+        <div id="currentStatus" class="alert mb-4">
+            Chargement...
+        </div>
+
+        <!-- Étapes d'enrôlement -->
+        <div class="grid grid-2">
+            <!-- Étape 1: Capture du visage -->
+            <div class="card">
+                <div class="card-header">
+                    <h2 class="card-title">📷 Étape 1: Capture du visage</h2>
+                    <span class="badge" id="faceStatus">En attente</span>
+                </div>
+                <div class="card-body">
+                    <p class="mb-3" style="color: var(--text-secondary);">
+                        Placez votre visage dans le cadre et assurez-vous d'être bien éclairé.
+                    </p>
+                    
+                    <div class="video-container mb-3">
+                        <video id="faceVideo" autoplay muted playsinline></video>
+                        <div class="video-status hidden" id="faceVideoStatus">
+                            <span class="status-dot active"></span>
+                            <span>Caméra active</span>
+                        </div>
+                    </div>
+
+                    <canvas id="faceCanvas" style="display: none;"></canvas>
+
+                    <div style="display: flex; gap: 1rem;">
+                        <button id="startCameraBtn" class="btn btn-secondary" onclick="startCamera()">
+                            📷 Activer la caméra
+                        </button>
+                        <button id="captureFaceBtn" class="btn btn-primary hidden" onclick="captureFace()">
+                            ✅ Capturer le visage
+                        </button>
+                    </div>
+
+                    <div id="facePreview" class="mt-3 hidden">
+                        <p style="color: var(--success-color);">✅ Visage capturé avec succès !</p>
+                        <img id="capturedFaceImg" style="max-width: 200px; border-radius: 8px; margin-top: 0.5rem;">
+                    </div>
+                </div>
+            </div>
+
+            <!-- Étape 2: Enregistrement vocal -->
+            <div class="card">
+                <div class="card-header">
+                    <h2 class="card-title">🎤 Étape 2: Enregistrement vocal</h2>
+                    <span class="badge" id="voiceStatus">En attente</span>
+                </div>
+                <div class="card-body">
+                    <p class="mb-3" style="color: var(--text-secondary);">
+                        Lisez le texte suivant à voix haute et claire:
+                    </p>
+
+                    <div class="card mb-3" style="background: var(--bg-secondary);">
+                        <p style="font-size: 1.1rem; font-style: italic;" id="textToRead">
+                            "Bonjour, je suis un candidat et je confirme mon identité pour passer cet examen de manière sécurisée."
+                        </p>
+                    </div>
+
+                    <div class="audio-recorder mb-3">
+                        <button id="recordBtn" class="record-btn" onclick="toggleRecording()">
+                            🎤
+                        </button>
+                        <p id="recordingStatus">Cliquez pour enregistrer</p>
+                        <div class="progress" style="width: 100%;">
+                            <div id="recordingProgress" class="progress-bar" style="width: 0%;"></div>
+                        </div>
+                    </div>
+
+                    <div id="voicePreview" class="hidden">
+                        <p style="color: var(--success-color);">✅ Voix enregistrée avec succès !</p>
+                        <audio id="recordedAudio" controls style="width: 100%; margin-top: 0.5rem;"></audio>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Bouton de validation -->
+        <div class="card mt-4">
+            <div class="card-body text-center">
+                <p class="mb-3">
+                    Une fois les deux étapes complétées, cliquez sur le bouton ci-dessous pour finaliser votre enrôlement.
+                </p>
+                <button id="enrollBtn" class="btn btn-success btn-lg" onclick="submitEnrollment()" disabled>
+                    🔐 Finaliser l'enrôlement
+                </button>
+            </div>
+        </div>
+    </main>
+
+    <!-- Loading overlay -->
+    <div id="loadingOverlay" class="loading-overlay hidden">
+        <div class="spinner"></div>
+        <p>Traitement en cours...</p>
+    </div>
+
+    <script src="js/api.js"></script>
+    <script src="js/biometric.js"></script>
+    <script>
+        let camera = null;
+        let audioRecorder = null;
+        let capturedFaceImage = null;
+        let recordedVoiceAudio = null;
+        let isRecording = false;
+
+        // Déconnexion
+        function logout() {
+            api.clearToken();
+            window.location.href = 'login.html';
+        }
+
+        // Charger les données utilisateur
+        async function loadUserData() {
+            try {
+                const user = await api.getCurrentUser();
+                
+                document.getElementById('userName').textContent = `${user.prenom} ${user.nom}`;
+                document.getElementById('userRole').textContent = user.role === 'admin' ? 'Administrateur' : 'Candidat';
+
+                // Statut d'enrôlement
+                if (user.is_enrolled) {
+                    document.getElementById('currentStatus').className = 'alert alert-success mb-4';
+                    document.getElementById('currentStatus').innerHTML = `
+                        ✅ Vous êtes déjà enrôlé ! Vous pouvez ré-enregistrer vos données biométriques si nécessaire.
+                    `;
+                } else {
+                    document.getElementById('currentStatus').className = 'alert alert-warning mb-4';
+                    document.getElementById('currentStatus').innerHTML = `
+                        ⚠️ Vous devez compléter l'enrôlement biométrique pour pouvoir passer des examens.
+                    `;
+                }
+            } catch (error) {
+                console.error('Erreur:', error);
+                logout();
+            }
+        }
+
+        // Démarrer la caméra
+        async function startCamera() {
+            try {
+                const video = document.getElementById('faceVideo');
+                camera = new CameraManager(video, document.getElementById('faceCanvas'));
+                await camera.start();
+
+                document.getElementById('startCameraBtn').classList.add('hidden');
+                document.getElementById('captureFaceBtn').classList.remove('hidden');
+                document.getElementById('faceVideoStatus').classList.remove('hidden');
+            } catch (error) {
+                alert(error.message);
+            }
+        }
+
+        // Capturer le visage
+        function captureFace() {
+            if (!camera || !camera.isActive) {
+                alert('Veuillez d\'abord activer la caméra');
+                return;
+            }
+
+            try {
+                capturedFaceImage = camera.captureImage();
+                
+                // Afficher l'aperçu
+                document.getElementById('capturedFaceImg').src = capturedFaceImage;
+                document.getElementById('facePreview').classList.remove('hidden');
+                document.getElementById('faceStatus').textContent = '✅ Complété';
+                document.getElementById('faceStatus').className = 'badge badge-success';
+
+                // Arrêter la caméra
+                camera.stop();
+                document.getElementById('faceVideoStatus').classList.add('hidden');
+                document.getElementById('captureFaceBtn').textContent = '🔄 Recapturer';
+
+                checkEnrollmentReady();
+            } catch (error) {
+                alert('Erreur lors de la capture: ' + error.message);
+            }
+        }
+
+        // Toggle enregistrement
+        async function toggleRecording() {
+            if (isRecording) {
+                await stopRecording();
+            } else {
+                await startRecording();
+            }
+        }
+
+        // Démarrer l'enregistrement
+        async function startRecording() {
+            try {
+                audioRecorder = new AudioRecorder();
+                await audioRecorder.start();
+                
+                isRecording = true;
+                document.getElementById('recordBtn').classList.add('recording');
+                document.getElementById('recordingStatus').textContent = 'Enregistrement en cours... (5 secondes)';
+
+                // Animation de progression
+                let progress = 0;
+                const progressBar = document.getElementById('recordingProgress');
+                const interval = setInterval(() => {
+                    progress += 2;
+                    progressBar.style.width = progress + '%';
+                    if (progress >= 100) {
+                        clearInterval(interval);
+                    }
+                }, 100);
+
+                // Arrêter automatiquement après 5 secondes
+                setTimeout(async () => {
+                    if (isRecording) {
+                        clearInterval(interval);
+                        await stopRecording();
+                    }
+                }, 5000);
+            } catch (error) {
+                alert(error.message);
+            }
+        }
+
+        // Arrêter l'enregistrement
+        async function stopRecording() {
+            if (!audioRecorder) return;
+
+            try {
+                recordedVoiceAudio = await audioRecorder.stop();
+                isRecording = false;
+
+                document.getElementById('recordBtn').classList.remove('recording');
+                document.getElementById('recordingStatus').textContent = 'Enregistrement terminé';
+                document.getElementById('recordingProgress').style.width = '100%';
+
+                // Afficher l'aperçu
+                const audioBlob = await fetch(recordedVoiceAudio).then(r => r.blob());
+                document.getElementById('recordedAudio').src = URL.createObjectURL(audioBlob);
+                document.getElementById('voicePreview').classList.remove('hidden');
+                document.getElementById('voiceStatus').textContent = '✅ Complété';
+                document.getElementById('voiceStatus').className = 'badge badge-success';
+
+                checkEnrollmentReady();
+            } catch (error) {
+                isRecording = false;
+                document.getElementById('recordBtn').classList.remove('recording');
+                alert('Erreur: ' + error.message);
+            }
+        }
+
+        // Vérifier si l'enrôlement est prêt
+        function checkEnrollmentReady() {
+            const enrollBtn = document.getElementById('enrollBtn');
+            if (capturedFaceImage && recordedVoiceAudio) {
+                enrollBtn.disabled = false;
+            } else {
+                enrollBtn.disabled = true;
+            }
+        }
+
+        // Soumettre l'enrôlement
+        async function submitEnrollment() {
+            if (!capturedFaceImage || !recordedVoiceAudio) {
+                alert('Veuillez compléter les deux étapes');
+                return;
+            }
+
+            const loading = document.getElementById('loadingOverlay');
+            loading.classList.remove('hidden');
+
+            try {
+                const result = await api.enroll(capturedFaceImage, recordedVoiceAudio);
+                
+                alert('🎉 Enrôlement réussi ! Vous pouvez maintenant passer des examens.');
+                window.location.href = 'dashboard.html';
+            } catch (error) {
+                alert('Erreur: ' + error.message);
+            } finally {
+                loading.classList.add('hidden');
+            }
+        }
+
+        // Initialisation
+        document.addEventListener('DOMContentLoaded', async () => {
+            if (!localStorage.getItem('access_token')) {
+                window.location.href = 'login.html';
+                return;
+            }
+
+            await loadUserData();
+        });
+    </script>
+</body>
+</html>

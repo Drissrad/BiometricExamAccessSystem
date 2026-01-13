@@ -1,0 +1,273 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tableau de bord - Biométrie Examen</title>
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+    <!-- Navigation -->
+    <nav class="navbar">
+        <div class="container">
+            <a href="dashboard.html" class="navbar-brand">
+                <span class="icon">🔐</span>
+                <span>Biométrie Examen</span>
+            </a>
+
+            <ul class="navbar-nav">
+                <li><a href="dashboard.html" class="active">Tableau de bord</a></li>
+                <li><a href="exams.html">Examens</a></li>
+                <li><a href="enroll.html">Enrôlement</a></li>
+            </ul>
+
+            <div class="user-menu">
+                <div class="user-info">
+                    <div class="user-name" id="userName">-</div>
+                    <div class="user-role" id="userRole">-</div>
+                </div>
+                <button class="btn btn-secondary btn-sm" onclick="logout()">Déconnexion</button>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Contenu principal -->
+    <main class="container" style="padding: 2rem 0;">
+        <!-- Alerte enrôlement -->
+        <div id="enrollmentAlert" class="alert alert-warning hidden mb-3">
+            ⚠️ Vous devez effectuer l'enrôlement biométrique avant de passer un examen.
+            <a href="enroll.html" class="btn btn-warning btn-sm" style="margin-left: 1rem;">Effectuer l'enrôlement</a>
+        </div>
+
+        <!-- Titre -->
+        <h1 class="mb-4">Bienvenue, <span id="userFirstName">-</span> !</h1>
+
+        <!-- Statistiques -->
+        <div class="grid grid-4 mb-4">
+            <div class="stat-card">
+                <div class="stat-icon">📝</div>
+                <div class="stat-value" id="statExamsAvailable">-</div>
+                <div class="stat-label">Examens disponibles</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-icon">✅</div>
+                <div class="stat-value" id="statExamsCompleted">-</div>
+                <div class="stat-label">Examens passés</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-icon">📊</div>
+                <div class="stat-value" id="statAverageScore">-</div>
+                <div class="stat-label">Score moyen</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-icon" id="enrollmentIcon">❓</div>
+                <div class="stat-value" id="statEnrollment">-</div>
+                <div class="stat-label">Enrôlement</div>
+            </div>
+        </div>
+
+        <!-- Examens récents -->
+        <div class="card mb-4">
+            <div class="card-header">
+                <h2 class="card-title">📋 Examens disponibles</h2>
+                <a href="exams.html" class="btn btn-secondary btn-sm">Voir tout</a>
+            </div>
+            <div class="card-body">
+                <div id="examsList" class="grid grid-2">
+                    <!-- Les examens seront chargés ici -->
+                    <p class="text-center" style="grid-column: 1 / -1; color: var(--text-secondary);">
+                        Chargement...
+                    </p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Sessions récentes -->
+        <div class="card">
+            <div class="card-header">
+                <h2 class="card-title">📜 Mes sessions récentes</h2>
+            </div>
+            <div class="card-body">
+                <div class="table-container">
+                    <table class="table">
+                        <thead>
+                            <tr>
+                                <th>Examen</th>
+                                <th>Date</th>
+                                <th>Statut</th>
+                                <th>Score</th>
+                            </tr>
+                        </thead>
+                        <tbody id="sessionsList">
+                            <tr>
+                                <td colspan="4" class="text-center" style="color: var(--text-secondary);">
+                                    Aucune session
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <script src="js/api.js"></script>
+    <script>
+        let currentUser = null;
+
+        // Déconnexion
+        function logout() {
+            api.clearToken();
+            window.location.href = 'login.html';
+        }
+
+        // Charger les données utilisateur
+        async function loadUserData() {
+            try {
+                currentUser = await api.getCurrentUser();
+                
+                document.getElementById('userName').textContent = `${currentUser.prenom} ${currentUser.nom}`;
+                document.getElementById('userRole').textContent = currentUser.role === 'admin' ? 'Administrateur' : 'Candidat';
+                document.getElementById('userFirstName').textContent = currentUser.prenom;
+
+                // Statut d'enrôlement
+                if (currentUser.is_enrolled) {
+                    document.getElementById('statEnrollment').textContent = 'Effectué';
+                    document.getElementById('enrollmentIcon').textContent = '✅';
+                    document.getElementById('enrollmentAlert').classList.add('hidden');
+                } else {
+                    document.getElementById('statEnrollment').textContent = 'Non effectué';
+                    document.getElementById('enrollmentIcon').textContent = '❌';
+                    document.getElementById('enrollmentAlert').classList.remove('hidden');
+                }
+
+                // Rediriger si admin
+                if (currentUser.role === 'admin') {
+                    window.location.href = 'admin.html';
+                }
+            } catch (error) {
+                console.error('Erreur:', error);
+                logout();
+            }
+        }
+
+        // Charger les examens
+        async function loadExams() {
+            try {
+                const exams = await api.getExams();
+                const container = document.getElementById('examsList');
+
+                document.getElementById('statExamsAvailable').textContent = exams.length;
+
+                if (exams.length === 0) {
+                    container.innerHTML = `
+                        <p class="text-center" style="grid-column: 1 / -1; color: var(--text-secondary);">
+                            Aucun examen disponible pour le moment
+                        </p>
+                    `;
+                    return;
+                }
+
+                container.innerHTML = exams.slice(0, 4).map(exam => `
+                    <div class="card" style="background: var(--bg-secondary);">
+                        <h3 style="margin-bottom: 0.5rem;">${exam.title}</h3>
+                        <p style="color: var(--text-secondary); font-size: 0.9rem; margin-bottom: 1rem;">
+                            ${exam.description || 'Pas de description'}
+                        </p>
+                        <div style="display: flex; justify-content: space-between; align-items: center;">
+                            <span class="badge badge-info">⏱️ ${exam.duration_minutes} min</span>
+                            <a href="exam.html?id=${exam.id}" class="btn btn-primary btn-sm" 
+                               ${!currentUser?.is_enrolled ? 'disabled title="Enrôlement requis"' : ''}>
+                                Commencer
+                            </a>
+                        </div>
+                    </div>
+                `).join('');
+            } catch (error) {
+                console.error('Erreur chargement examens:', error);
+            }
+        }
+
+        // Charger les sessions
+        async function loadSessions() {
+            try {
+                const sessions = await api.getMySessions();
+                const tbody = document.getElementById('sessionsList');
+
+                const completed = sessions.filter(s => s.status === 'completed');
+                document.getElementById('statExamsCompleted').textContent = completed.length;
+
+                // Score moyen
+                if (completed.length > 0) {
+                    const avg = completed.reduce((sum, s) => sum + (s.score || 0), 0) / completed.length;
+                    document.getElementById('statAverageScore').textContent = avg.toFixed(1) + '%';
+                } else {
+                    document.getElementById('statAverageScore').textContent = '-';
+                }
+
+                if (sessions.length === 0) {
+                    tbody.innerHTML = `
+                        <tr>
+                            <td colspan="4" class="text-center" style="color: var(--text-secondary);">
+                                Aucune session
+                            </td>
+                        </tr>
+                    `;
+                    return;
+                }
+
+                tbody.innerHTML = sessions.slice(0, 5).map(session => `
+                    <tr>
+                        <td>Examen #${session.exam_id}</td>
+                        <td>${session.started_at ? new Date(session.started_at).toLocaleDateString('fr-FR') : '-'}</td>
+                        <td>
+                            <span class="badge badge-${getStatusBadge(session.status)}">
+                                ${getStatusLabel(session.status)}
+                            </span>
+                        </td>
+                        <td>${session.score !== null ? session.score.toFixed(1) + '%' : '-'}</td>
+                    </tr>
+                `).join('');
+            } catch (error) {
+                console.error('Erreur chargement sessions:', error);
+            }
+        }
+
+        function getStatusLabel(status) {
+            const labels = {
+                'pending': 'En attente',
+                'in_progress': 'En cours',
+                'completed': 'Terminé',
+                'suspended': 'Suspendu',
+                'terminated': 'Interrompu',
+                'disqualified': '🚫 Disqualifié'
+            };
+            return labels[status] || status;
+        }
+
+        function getStatusBadge(status) {
+            const badges = {
+                'pending': 'info',
+                'in_progress': 'warning',
+                'completed': 'success',
+                'suspended': 'danger',
+                'terminated': 'danger',
+                'disqualified': 'danger'
+            };
+            return badges[status] || 'info';
+        }
+
+        // Initialisation
+        document.addEventListener('DOMContentLoaded', async () => {
+            if (!localStorage.getItem('access_token')) {
+                window.location.href = 'login.html';
+                return;
+            }
+
+            await loadUserData();
+            await loadExams();
+            await loadSessions();
+        });
+    </script>
+</body>
+</html>

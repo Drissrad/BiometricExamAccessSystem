@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Liste des examens - Biométrie Examen</title>
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+    <!-- Navigation -->
+    <nav class="navbar">
+        <div class="container">
+            <a href="dashboard.html" class="navbar-brand">
+                <span class="icon">🔐</span>
+                <span>Biométrie Examen</span>
+            </a>
+
+            <ul class="navbar-nav">
+                <li><a href="dashboard.html">Tableau de bord</a></li>
+                <li><a href="exams.html" class="active">Examens</a></li>
+                <li><a href="enroll.html">Enrôlement</a></li>
+            </ul>
+
+            <div class="user-menu">
+                <div class="user-info">
+                    <div class="user-name" id="userName">-</div>
+                    <div class="user-role" id="userRole">-</div>
+                </div>
+                <button class="btn btn-secondary btn-sm" onclick="logout()">Déconnexion</button>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Contenu principal -->
+    <main class="container" style="padding: 2rem 0;">
+        <h1 class="mb-4">📋 Examens disponibles</h1>
+
+        <!-- Alerte enrôlement -->
+        <div id="enrollmentAlert" class="alert alert-warning hidden mb-4">
+            ⚠️ Vous devez effectuer l'enrôlement biométrique avant de passer un examen.
+            <a href="enroll.html" class="btn btn-warning btn-sm" style="margin-left: 1rem;">Effectuer l'enrôlement</a>
+        </div>
+
+        <!-- Liste des examens -->
+        <div id="examsList" class="grid grid-3">
+            <p class="text-center" style="grid-column: 1 / -1; color: var(--text-secondary);">
+                Chargement...
+            </p>
+        </div>
+    </main>
+
+    <script src="js/api.js"></script>
+    <script>
+        let currentUser = null;
+
+        function logout() {
+            api.clearToken();
+            window.location.href = 'login.html';
+        }
+
+        async function loadUserData() {
+            try {
+                currentUser = await api.getCurrentUser();
+                
+                document.getElementById('userName').textContent = `${currentUser.prenom} ${currentUser.nom}`;
+                document.getElementById('userRole').textContent = currentUser.role === 'admin' ? 'Administrateur' : 'Candidat';
+
+                if (!currentUser.is_enrolled) {
+                    document.getElementById('enrollmentAlert').classList.remove('hidden');
+                }
+
+                if (currentUser.role === 'admin') {
+                    window.location.href = 'admin.html';
+                }
+            } catch (error) {
+                console.error('Erreur:', error);
+                logout();
+            }
+        }
+
+        async function loadExams() {
+            try {
+                const exams = await api.getExams();
+                const container = document.getElementById('examsList');
+
+                if (exams.length === 0) {
+                    container.innerHTML = `
+                        <div class="card text-center" style="grid-column: 1 / -1;">
+                            <p style="font-size: 3rem;">📭</p>
+                            <h2>Aucun examen disponible</h2>
+                            <p style="color: var(--text-secondary);">
+                                Revenez plus tard pour voir les examens publiés.
+                            </p>
+                        </div>
+                    `;
+                    return;
+                }
+
+                container.innerHTML = exams.map(exam => `
+                    <div class="card">
+                        <div class="card-header">
+                            <h3 class="card-title">${exam.title}</h3>
+                            <span class="badge badge-${getStatusBadge(exam.status)}">
+                                ${getStatusLabel(exam.status)}
+                            </span>
+                        </div>
+                        <div class="card-body">
+                            <p style="color: var(--text-secondary); margin-bottom: 1rem;">
+                                ${exam.description || 'Pas de description'}
+                            </p>
+                            
+                            <div style="display: flex; flex-wrap: wrap; gap: 0.5rem; margin-bottom: 1rem;">
+                                <span class="badge badge-info">⏱️ ${exam.duration_minutes} min</span>
+                                ${exam.face_check_enabled ? '<span class="badge badge-success">📷 Visage</span>' : ''}
+                                ${exam.voice_check_enabled ? '<span class="badge badge-success">🎤 Voix</span>' : ''}
+                            </div>
+
+                            ${exam.start_time ? `
+                                <p style="font-size: 0.85rem; color: var(--text-secondary);">
+                                    📅 Début: ${new Date(exam.start_time).toLocaleString('fr-FR')}
+                                </p>
+                            ` : ''}
+
+                            <a href="exam.html?id=${exam.id}" 
+                               class="btn btn-primary btn-block mt-3"
+                               ${!currentUser?.is_enrolled ? 'style="pointer-events: none; opacity: 0.5;" title="Enrôlement requis"' : ''}>
+                                ${currentUser?.is_enrolled ? '🚀 Commencer' : '🔒 Enrôlement requis'}
+                            </a>
+                        </div>
+                    </div>
+                `).join('');
+            } catch (error) {
+                console.error('Erreur:', error);
+            }
+        }
+
+        function getStatusLabel(status) {
+            const labels = {
+                'draft': 'Brouillon',
+                'published': 'Publié',
+                'active': 'Actif',
+                'completed': 'Terminé',
+                'cancelled': 'Annulé'
+            };
+            return labels[status] || status;
+        }
+
+        function getStatusBadge(status) {
+            const badges = {
+                'draft': 'warning',
+                'published': 'success',
+                'active': 'info',
+                'completed': 'success',
+                'cancelled': 'danger'
+            };
+            return badges[status] || 'info';
+        }
+
+        document.addEventListener('DOMContentLoaded', async () => {
+            if (!localStorage.getItem('access_token')) {
+                window.location.href = 'login.html';
+                return;
+            }
+
+            await loadUserData();
+            await loadExams();
+        });
+    </script>
+</body>
+</html>
