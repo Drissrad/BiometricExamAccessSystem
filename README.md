@@ -192,10 +192,3 @@ VOICE_CHALLENGE_INTERVAL_SECONDS=120
 - `GET /api/admin/security-logs` - Journaux de sécurité
 - `GET /api/admin/statistics` - Statistiques
 
-## 📄 Licence
-
-Ce projet est développé à des fins éducatives.
-
-## 👥 Auteur
-
-Projet de fin d'études - Système d'accès biométrique aux examens en ligne
